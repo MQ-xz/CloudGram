@@ -1,10 +1,12 @@
 from kivymd.app import MDApp
-from kivymd.uix.label import MDLabel
+from kivy.core.window import Window
+from src.screens import screens
 
 
 class CloudFreeApp(MDApp):
     def build(self):
-        return MDLabel(text="Hello, World", halign="center")
+        Window.size = (320, 600)
+        return screens()
 
 
 if __name__ == "__main__":

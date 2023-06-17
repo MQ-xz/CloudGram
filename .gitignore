@@ -1,5 +1,8 @@
 # venv
 env/
 
-#IDE
+# IDE
 .vscode/
+
+# caches
+__pycache__/

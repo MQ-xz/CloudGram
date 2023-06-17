@@ -1,0 +1,27 @@
+<LoginScreen>:
+    MDBoxLayout:
+        orientation: "vertical"
+        padding: 10
+        spacing: "10dp"
+
+        MDLabel:
+            text: "CloudFree"
+            font_style: "H3"
+            # halign: "center"
+
+        MDTextField:
+            id: phone_number
+            hint_text: "Enter Your Phone Number"
+            helper_text: "This should be a Telegram number"
+            helper_text_mode: "on_focus"
+            size_hint_x: None
+            width: "300dp"
+            padding: "5dp"
+            # validator: "phone"
+
+        MDFillRoundFlatButton:
+            text: "Login"
+            pos_hint: {'center_x': 0.9,'center_y': 0.0}
+            on_press: root.login()
+            
+
