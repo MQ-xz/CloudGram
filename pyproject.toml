@@ -1,0 +1,2 @@
+[tool.pylint.DESIGN]
+max-parents=15

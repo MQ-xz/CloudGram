@@ -1,11 +1,14 @@
+"""All screen register here"""
 from kivy.uix.screenmanager import ScreenManager
 from .login_screen import LoginScreen
 from .home_screen import HomeScreen
 
 
-def screens():
-    sm = ScreenManager()
-    sm.add_widget(LoginScreen(name="login"))
-    sm.add_widget(HomeScreen(name="home"))
+def screens() -> ScreenManager:
+    """register screens"""
 
-    return sm
+    _screen = ScreenManager()
+    _screen.add_widget(LoginScreen(name="login"))
+    _screen.add_widget(HomeScreen(name="home"))
+
+    return _screen

@@ -1,9 +1,12 @@
+"""CloudFreeApp main.py"""
 from kivymd.app import MDApp
 from kivy.core.window import Window
 from src.screens import screens
 
 
 class CloudFreeApp(MDApp):
+    """CloudFreeApp"""
+
     def build(self):
         Window.size = (320, 600)
         return screens()
