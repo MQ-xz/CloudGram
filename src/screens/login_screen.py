@@ -15,7 +15,9 @@ class LoginScreen(MDScreen):
         self.phone_number = ""
         self.otp = None
 
-    def otp_request(self, phone_number, *args):
+    def otp_request(
+        self, phone_number, *args
+    ):  # pylint: disable=unused-argument
         """send otp request to telegram"""
         print("hehe")
         sleep(2)

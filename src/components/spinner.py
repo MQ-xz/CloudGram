@@ -1,3 +1,4 @@
+"""Spinner"""
 from kivymd.uix.spinner import MDSpinner
 
 
