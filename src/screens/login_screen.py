@@ -23,11 +23,12 @@ class LoginScreen(MDScreen):
         sleep(2)
         print(self.phone_number, "otp_request")
         # add error
+        if self.phone_number == "+91987654321":
+            self.ids.login_screen_layout.remove_widget(phone_number)
+            self.ids.login_screen_layout.add_widget(EnterOTP())
         phone_number.theme_text_color = "Error"
         phone_number.ids.send_otp_button.disabled = False
-        phone_number.ids.send_otp_button.text = "Reending"
-        # self.ids.login_screen_layout.remove_widget(phone_number)
-        # self.ids.login_screen_layout.add_widget(EnterOTP())
+        phone_number.ids.send_otp_button.text = "Resending"
 
     def send_otp(self, phone_number):
         """login"""
