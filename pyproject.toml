@@ -1,2 +1,5 @@
 [tool.pylint.DESIGN]
 max-parents=15
+
+[tool.black]
+line-length = 79
