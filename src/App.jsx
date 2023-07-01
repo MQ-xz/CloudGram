@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
+import Explorer from './pages/main/Explorer'
 
-import client from './services/telegram'
+// import client from './services/telegram'
 
 
 export default function App() {
@@ -13,18 +14,17 @@ export default function App() {
 
     const sendMsg = async () => {
         // await client.connect()
-        await client.sendMessage('MQ_XZ', { message: 'hellow' })
+        // await client.sendMessage('MQ_XZ', { message: 'hellow' })
     }
 
     return (
         <>
-
             <input
                 type='submit'
                 value='msg'
                 onClick={sendMsg}
             />
-
+            <Explorer />
         </>
 
     )
