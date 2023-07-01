@@ -11,10 +11,19 @@ Builder.load_string(
     orientation: "vertical"
     pos_hint: {'right': .99}
 
-    MDFloatingActionButton:
-        icon: "upload"
-        pos_hint: {'right': .99}
-        on_release: root.show_file_manager()
+    # MDFloatingActionButtonSpeedDial:
+    #         data: {
+    #                 "Python": "language-python",
+    #                 "PHP": "language-php",
+    #                 "C++": "language-cpp",
+    #             }
+    #         root_button_anim: True
+   
+    
+    # MDFloatingActionButton:
+    #     icon: "upload"
+    #     pos_hint: {'right': .99}
+    #     on_release: root.show_file_manager()
 
     # MDLabel:
     #     text: root.selected_file if root.selected_file else "No file selected"
@@ -24,6 +33,7 @@ Builder.load_string(
 
 
 class FileUploader(BoxLayout):
+    # data =
     selected_file = StringProperty("")
 
     def __init__(self, **kwargs):
