@@ -1,0 +1,16 @@
+<MD3Card>
+    padding: 4
+    size_hint: None, None
+    size: "200dp", "100dp"
+
+    MDRelativeLayout:
+        MDIconButton:
+            icon: "dots-vertical"
+            pos_hint: {"top": 1, "right": 1}
+        MDLabel:
+            id: label
+            text: root.text
+            adaptive_size: True
+            color: "grey"
+            pos: "12dp", "12dp"
+            bold: True

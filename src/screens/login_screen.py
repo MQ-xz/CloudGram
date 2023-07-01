@@ -1,10 +1,11 @@
 """LoginScreen"""
 
-from time import sleep
 from functools import partial
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivy.clock import Clock
+
+from src.utils.telegram import telegram
 
 
 class LoginScreen(MDScreen):
@@ -13,17 +14,23 @@ class LoginScreen(MDScreen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.phone_number = ""
-        self.otp = None
+        self.otp = ""
+        self.hash_code = ""
 
     def otp_request(
         self, phone_number, *args
     ):  # pylint: disable=unused-argument
         """send otp request to telegram"""
+
         print("hehe")
-        sleep(2)
+        # sleep(2)
         print(self.phone_number, "otp_request")
+        telegram.connect()
+        send_code = telegram.send_code(self.phone_number)
+        print(send_code, "sendcode")
+        self.hash_code = send_code.phone_code_hash
         # add error
-        if self.phone_number == "+91987654321":
+        if self.phone_number == "+918129367724":
             self.ids.login_screen_layout.remove_widget(phone_number)
             self.ids.login_screen_layout.add_widget(EnterOTP())
         phone_number.theme_text_color = "Error"
@@ -45,8 +52,11 @@ class LoginScreen(MDScreen):
         """login"""
         print("Let's login : LoginScreen")
         self.otp = otp.ids.otp.text
-        print(self.otp)
-        self.manager.current = "home"
+        try:
+            telegram.sign_in(self.phone_number, self.hash_code, self.otp)
+            self.manager.current = "home"
+        except Exception as error:
+            print(error)
 
 
 class EnterOTP(MDBoxLayout):

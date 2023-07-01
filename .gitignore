@@ -1,8 +1,15 @@
 # venv
 env/
+.env
 
 # IDE
 .vscode/
 
 # caches
 __pycache__/
+
+# builds
+*.apk
+
+# sessions
+*.session
