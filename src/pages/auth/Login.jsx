@@ -5,7 +5,11 @@ import client from "../../services/telegram"
 import { API_ID, API_HASH } from "../../config/config"
 
 function Login() {
-
+    /**
+     * 
+     * @todo: Password login
+     * 
+     */
     const [phoneNumber, setPhoneNumber] = useState(null)
     const [phoneCodeHash, setPhoneCodeHash] = useState(null)
     const [code, setCode] = useState(null)
@@ -49,28 +53,40 @@ function Login() {
     return (
         <>
             <h1>Login</h1>
-            <input
-                type="text"
-                name="phoneNumber"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-            />
-            <input
-                type="submit"
-                value="Send code"
-                onClick={sendCode}
-            />
-            <input
-                type="text"
-                name="code"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-            />
-            <input
-                type="submit"
-                value="Login"
-                onClick={Login}
-            />
+            {
+                !phoneCodeHash && (
+                    <>
+                        <input
+                            type="text"
+                            name="phoneNumber"
+                            value={phoneNumber}
+                            onChange={(e) => setPhoneNumber(e.target.value)}
+                        />
+                        <input
+                            type="submit"
+                            value="Send code"
+                            onClick={sendCode}
+                        />
+                    </>
+                )
+            }
+            {
+                phoneCodeHash && (
+                    <>
+                        <input
+                            type="text"
+                            name="code"
+                            value={code}
+                            onChange={(e) => setCode(e.target.value)}
+                        />
+                        <input
+                            type="submit"
+                            value="Login"
+                            onClick={Login}
+                        />
+                    </>
+                )
+            }
         </>
     )
 }

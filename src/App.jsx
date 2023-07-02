@@ -1,30 +1,32 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Explorer from './pages/main/Explorer'
+import Login from './pages/auth/Login'
 
-// import client from './services/telegram'
-
+import client from './services/telegram'
 
 export default function App() {
+    const [isLoading, setIsLoading] = useState(false)
+    const [isAuthenticated, setIsAuthenticated] = useState(false)
 
     useEffect(() => {
-        // client.connect()
-
-        // isAuthenticated()
+        checkAuth()
     })
 
-    const sendMsg = async () => {
-        // await client.connect()
-        // await client.sendMessage('MQ_XZ', { message: 'hellow' })
+    async function checkAuth() {
+        setIsLoading(true)
+        if (!isAuthenticated && await client.isUserAuthorized()) {
+            setIsAuthenticated(true)
+        }
+        setIsLoading(false)
     }
 
     return (
         <>
-            <input
-                type='submit'
-                value='msg'
-                onClick={sendMsg}
-            />
-            <Explorer />
+            {
+                isLoading ? <p>Loading...</p>
+                    : isAuthenticated ? <Explorer /> :
+                        <Login />
+            }
         </>
 
     )
