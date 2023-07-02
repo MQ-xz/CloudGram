@@ -3,6 +3,8 @@ import { useEffect, useState } from "react"
 import storage from "../../utils/storage"
 import Folder from "../../components/Folder"
 import File from "../../components/File"
+import client from "../../services/telegram"
+import { CustomFile } from "telegram/client/uploads"
 
 export default function Explorer() {
 
@@ -21,6 +23,19 @@ export default function Explorer() {
         if (_data) setData(_data)
     }
 
+    async function uploadFile(file) {
+
+        const toUpload = new CustomFile(file.name, file.size, '', file.arrayBuffer())
+
+        const result = await client.sendFile('MQ_XZ', {
+            file: toUpload,
+            workers: 1,
+            forceDocument: true
+        });
+
+        console.log(result); // prints the result
+    }
+
     return (
         <>
             <h1>Folder</h1>
@@ -37,13 +52,14 @@ export default function Explorer() {
                 })
             }
             <input
-                type="submit"
-                value='Add New file'
-                onClick={() => {
-                    setIsLoading(true)
-                    storage.newFile()
-                    update()
-                }}
+                type="file"
+                onChange={(e) => uploadFile(e.target.files[0])}
+            // onClick={(e) => {
+            //     console.log(e)
+            //     // setIsLoading(true)
+            //     // storage.newFile()
+            //     // update()
+            // }}
             />
             <input
                 type="submit"
