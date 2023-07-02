@@ -1,11 +1,11 @@
 import PropTypes from 'prop-types';
-import storage from '../../utils/storage';
+import storage from '../utils/storage';
 
 function File(props) {
     const { id, name } = props
 
     return <div key={id}>
-        <h1>
+        <h6>
             {name}
             <span>(file)
                 <button
@@ -14,7 +14,7 @@ function File(props) {
                     x
                 </button>
             </span>
-        </h1>
+        </h6>
     </div >
 }
 

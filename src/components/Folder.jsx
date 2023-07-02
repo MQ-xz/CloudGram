@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 function Folder(props) {
     const { key, name } = props
     return <div key={key}>
-        <h1>{name}<span>(Folder)</span></h1>
+        <h6>{name}<span>(Folder)</span></h6>
     </div>
 }
 

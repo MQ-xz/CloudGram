@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react"
 
 import storage from "../../utils/storage"
-import Folder from "./folder"
-import File from "./File"
+import Folder from "../../components/Folder"
+import File from "../../components/File"
 
 export default function Explorer() {
 
