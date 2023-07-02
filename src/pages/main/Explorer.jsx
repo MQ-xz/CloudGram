@@ -5,48 +5,32 @@ import Folder from "./folder"
 import File from "./File"
 
 export default function Explorer() {
+
+    const [isLoading, setIsLoading] = useState(true)
     const [data, setData] = useState([])
 
     useEffect(() => {
-        if (data.length === 0) {
-            const _data = storage.getData()
-            if (_data) setData(_data)
+        if (data.length === 0 && isLoading) {
+            update()
+            setIsLoading(false)
         }
     }, [data])
 
-    const temp = () => {
-        const _data = [
-            {
-                name: 'folder 1',
-                type: 'folder'
-            },
-            {
-                name: 'folder 2',
-                type: 'folder'
-            },
-            {
-                name: 'file 1',
-                type: 'file'
-            },
-            {
-                name: 'file 2',
-                type: 'file'
-            }
-        ]
-        localStorage.setItem('data', JSON.stringify(_data))
+    function update() {
+        const _data = storage.getData()
+        if (_data) setData(_data)
     }
-
 
     return (
         <>
             <h1>Folder</h1>
             {
-                data?.map((item, i) => {
+                data?.map((item) => {
                     switch (item.type) {
                         case 'folder':
-                            return <Folder key={i} name={item.name} />
+                            return <Folder id={item.id} name={item.name} />
                         case 'file':
-                            return <File key={i} name={item.name} />
+                            return <File id={item.id} name={item.name} />
                         default:
                             return null
                     }
@@ -55,11 +39,20 @@ export default function Explorer() {
             <input
                 type="submit"
                 value='Add New file'
-                onClick={() => { storage.addFile() }}
+                onClick={() => {
+                    setIsLoading(true)
+                    storage.newFile()
+                    update()
+                }}
             />
             <input
                 type="submit"
-                onClick={temp}
+                value='Add New folder'
+                onClick={() => {
+                    setIsLoading(true)
+                    storage.newFolder()
+                    update()
+                }}
             />
         </>
     )

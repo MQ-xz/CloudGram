@@ -1,21 +1,37 @@
+import { v4 as uuidv4 } from 'uuid';
+
 class Storage {
     constructor() {
         this.key = 'data';
     }
 
     getData() {
-        return JSON.parse(localStorage.getItem(this.key));
+        return JSON.parse(localStorage.getItem(this.key)) || []
     }
 
     setData(data) {
         localStorage.setItem(this.key, JSON.stringify(data));
     }
 
-    addFile() {
-        let name = 'name';
+    addData(data) {
         let _data = this.getData();
-        console.log(_data);
-        this.setData([..._data, { name: name, type: 'file' }]);
+        this.setData([..._data, ...[data]]);
+    }
+
+    newFile() {
+        let newFile = { id: uuidv4(), name: 'New file' }
+        this.addData({ ...newFile, type: 'file' });
+    }
+
+    newFolder() {
+        let newFolder = { id: uuidv4(), name: 'New folder' }
+        this.addData({ ...newFolder, type: 'folder' });
+    }
+
+    delete(id) {
+        let _data = this.getData();
+        let newData = _data.filter(item => item.id !== id);
+        this.setData(newData);
     }
 }
 

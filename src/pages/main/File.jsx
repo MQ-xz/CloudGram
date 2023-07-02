@@ -1,14 +1,25 @@
 import PropTypes from 'prop-types';
+import storage from '../../utils/storage';
 
 function File(props) {
-    const { key, name } = props
-    return <div key={key}>
-        <h1>{name}<span>(file)</span></h1>
-    </div>
+    const { id, name } = props
+
+    return <div key={id}>
+        <h1>
+            {name}
+            <span>(file)
+                <button
+                    onClick={() => storage.delete(id)}
+                >
+                    x
+                </button>
+            </span>
+        </h1>
+    </div >
 }
 
 File.propTypes = {
-    key: PropTypes.string,
+    id: PropTypes.string,
     name: PropTypes.string
 }
 
