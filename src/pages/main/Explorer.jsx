@@ -1,40 +1,57 @@
 import { useEffect, useState } from "react"
 
-import storage from "../../utils/storage"
 import Folder from "../../components/Folder"
 import File from "../../components/File"
-import client from "../../services/telegram"
-import { CustomFile } from "telegram/client/uploads"
+
+import { useIndexedDB } from "react-indexed-db-hook"
+import uploadFile from "../../utils/uploadFile"
 
 export default function Explorer() {
-
-    const [isLoading, setIsLoading] = useState(true)
+    const parent = null
     const [data, setData] = useState([])
+    const { add, openCursor, deleteRecord } = useIndexedDB('file')
 
     useEffect(() => {
-        if (data.length === 0 && isLoading) {
-            update()
-            setIsLoading(false)
+        fetchData()
+    }, [parent])
+
+    function fetchData() {
+        let _data = []
+        openCursor((e) => {
+            var cursor = e.target.result;
+            if (cursor) {
+                console.log(cursor.value)
+                if (cursor.value.parent === parent)
+                    _data = [..._data, cursor.value]
+                cursor.continue();
+            } else {
+                console.log('No more entries!');
+                setData(_data)
+            }
+        })
+    }
+
+    function addFolder() {
+        console.log('addFolder')
+        let data = {
+            name: 'new',
+            type: 'folder',
+            parent: null
         }
-    }, [data])
-
-    function update() {
-        const _data = storage.getData()
-        if (_data) setData(_data)
+        add(data)
+            .then((e) => { console.log(e) })
+            .catch((e) => { console.log(e) })
+        fetchData()
     }
 
-    async function uploadFile(file) {
-
-        const toUpload = new CustomFile(file.name, file.size, '', file.arrayBuffer())
-
-        const result = await client.sendFile('MQ_XZ', {
-            file: toUpload,
-            workers: 1,
-            forceDocument: true
-        });
-
-        console.log(result); // prints the result
+    function deleteItem(id) {
+        console.log('delete', id)
+        deleteRecord(id)
+            .then((e) => { console.log(e) })
+            .catch((e) => { console.log(e) })
+        fetchData()
     }
+
 
     return (
         <>
@@ -43,9 +60,9 @@ export default function Explorer() {
                 data?.map((item) => {
                     switch (item.type) {
                         case 'folder':
-                            return <Folder id={item.id} name={item.name} />
+                            return <Folder id={item.id} name={item.name} deleteItem={deleteItem} />
                         case 'file':
-                            return <File id={item.id} name={item.name} />
+                            return <File id={item.id} name={item.name} deleteItem={deleteItem} />
                         default:
                             return null
                     }
@@ -61,14 +78,11 @@ export default function Explorer() {
             //     // update()
             // }}
             />
+            <br />
             <input
                 type="submit"
-                value='Add New folder'
-                onClick={() => {
-                    setIsLoading(true)
-                    storage.newFolder()
-                    update()
-                }}
+                value='Add New Folder'
+                onClick={addFolder}
             />
         </>
     )

@@ -1,15 +1,14 @@
 import PropTypes from 'prop-types';
-import storage from '../utils/storage';
 
 function File(props) {
-    const { id, name } = props
+    const { id, name, deleteItem } = props
 
     return <div key={id}>
         <h6>
-            {name}
+            {id}:{name}
             <span>(file)
                 <button
-                    onClick={() => storage.delete(id)}
+                    onClick={() => deleteItem(id)}
                 >
                     x
                 </button>
@@ -20,7 +19,8 @@ function File(props) {
 
 File.propTypes = {
     id: PropTypes.string,
-    name: PropTypes.string
+    name: PropTypes.string,
+    deleteItem: PropTypes.func
 }
 
 export default File

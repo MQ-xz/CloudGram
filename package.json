@@ -12,6 +12,7 @@
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-indexed-db-hook": "^1.0.14",
     "telegram": "^2.17.9",
     "uuid": "^9.0.0"
   },
