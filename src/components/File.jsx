@@ -21,13 +21,16 @@ function File(props) {
         }
     }
 
+    async function handleDeleteFile() {
+        await client.deleteMessages('me', [file_id], true)
+        deleteItem(id)
+    }
+
     return <div key={id}>
         <h6>
             {id}:{name}
             <span>(file)
-                <button
-                    onClick={() => deleteItem(id)}
-                >
+                <button onClick={handleDeleteFile}>
                     x
                 </button>
                 <button
