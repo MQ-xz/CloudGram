@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
+import { BrowserRouter } from 'react-router-dom'
 import { initDB } from 'react-indexed-db-hook'
 
 import { AuthRoutes, UnAuthRoutes } from './AppRoutes'
 
-// import client from './services/telegram'
+import client from './services/telegram'
 
 // initDB
 import { DBConfig } from './db/config'
-import { BrowserRouter } from 'react-router-dom'
 initDB(DBConfig)
 
 export default function App() {
@@ -20,9 +20,9 @@ export default function App() {
 
     async function checkAuth() {
         setIsLoading(true)
-        // if (!isAuthenticated && await client.isUserAuthorized()) {
-        //     setIsAuthenticated(true)
-        // }
+        if (!isAuthenticated && await client.isUserAuthorized()) {
+            setIsAuthenticated(true)
+        }
         setIsLoading(false)
     }
 

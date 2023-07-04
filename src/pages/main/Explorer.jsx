@@ -5,7 +5,7 @@ import Folder from "../../components/Folder"
 import File from "../../components/File"
 
 import { useIndexedDB } from "react-indexed-db-hook"
-// import uploadFile from "../../utils/uploadFile"
+import uploadFile from "../../utils/uploadFile"
 import { useNavigate, useParams } from "react-router-dom"
 
 export default function Explorer() {
@@ -64,6 +64,24 @@ export default function Explorer() {
         fetchData()
     }
 
+    function handlerUploadFile(file) {
+        console.log('handlerUploadFile')
+        uploadFile(file)
+            .then((res) => {
+                console.log(res, 'handlerUploadFile')
+                let data = {
+                    id: uuid4(),
+                    name: file.name,
+                    type: 'file',
+                    file_id: res.id
+                }
+                if (parentID) data['parent'] = parentID
+                add(data)
+                    .then((e) => { console.log(e) })
+                    .catch((e) => { console.log(e) })
+                fetchData()
+            })
+    }
 
     return (
         <>
@@ -91,6 +109,7 @@ export default function Explorer() {
                                 key={item.id}
                                 id={item.id}
                                 name={item.name}
+                                file_id={item.file_id}
                                 deleteItem={deleteItem}
                             />
                         default:
@@ -98,10 +117,10 @@ export default function Explorer() {
                     }
                 })
             }
-            {/* <input
+            <input
                 type="file"
-                onChange={(e) => uploadFile(e.target.files[0])}
-            /> */}
+                onChange={(e) => handlerUploadFile(e.target.files[0])}
+            />
             <br />
             <input
                 type="submit"

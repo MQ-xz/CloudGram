@@ -6,7 +6,7 @@ export default async function uploadFile(file) {
 
     const toUpload = new CustomFile(file.name, file.size, '', file.arrayBuffer())
 
-    const result = await client.sendFile('MQ_XZ', {
+    const result = await client.sendFile('me', {
         file: toUpload,
         workers: 1,
         forceDocument: true
