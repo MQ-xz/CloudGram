@@ -1,8 +1,15 @@
 import PropTypes from 'prop-types';
+import { useNavigate } from 'react-router-dom';
 
 function Folder(props) {
+
     const { id, name, deleteItem } = props
-    return <div key={id}>
+    const navigate = useNavigate();
+
+    return <div
+        key={id}
+        onClick={() => { navigate(`/folder/${id}`) }}
+    >
         <h6>{id}:{name}
             <span>
                 (Folder)

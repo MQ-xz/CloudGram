@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { initDB } from 'react-indexed-db-hook'
 
-import Explorer from './pages/main/Explorer'
-import Login from './pages/auth/Login'
-import { DBConfig } from './db/config'
+import { AuthRoutes, UnAuthRoutes } from './AppRoutes'
 
 // import client from './services/telegram'
 
 // initDB
+import { DBConfig } from './db/config'
+import { BrowserRouter } from 'react-router-dom'
 initDB(DBConfig)
 
 export default function App() {
@@ -28,11 +28,14 @@ export default function App() {
 
     return (
         <>
-            {
-                isLoading ? <p>Loading...</p>
-                    : isAuthenticated ? <Explorer /> :
-                        <Login />
-            }
+            <BrowserRouter>
+                {
+                    isLoading ? <p>Loading...</p>
+                        : isAuthenticated ? <AuthRoutes />
+                            :
+                            <UnAuthRoutes />
+                }
+            </BrowserRouter>
         </>
 
     )
