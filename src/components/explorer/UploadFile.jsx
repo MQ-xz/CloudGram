@@ -1,5 +1,4 @@
 import { PropTypes } from 'prop-types';
-import { useState } from 'react';
 import { v4 as uuid4 } from 'uuid'
 import { useIndexedDB } from "react-indexed-db-hook"
 
@@ -7,9 +6,9 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import Modal from '@mui/material/Modal';
-import TextField from '@mui/material/TextField';
 import Stack from '@mui/material/Stack';
 
+import uploadFile from "../../utils/uploadFile"
 
 
 const style = {
@@ -24,30 +23,33 @@ const style = {
     p: 4,
 };
 
-export default function CreateFolder({ parentID, fetchData }) {
+export default function UploadFile({ parentID, fetchData, open, setOpen }) {
 
-    const [open, setOpen] = useState(false);
-    const handleOpen = () => setOpen(true);
     const handleClose = () => setOpen(false);
 
     const { add } = useIndexedDB('file')
 
-    function addFolder(name) {
-        let data = {
-            id: uuid4(),
-            name: name,
-            type: 'folder'
-        }
-        if (parentID) data['parent'] = parentID
-        add(data)
-            .then((e) => { console.log(e) })
-            .catch((e) => { console.log(e) })
-        fetchData()
-        handleClose()
+    function handlerUploadFile(file) {
+        console.log('handlerUploadFile')
+        uploadFile(file)
+            .then((res) => {
+                console.log(res, 'handlerUploadFile')
+                let data = {
+                    id: uuid4(),
+                    name: file.name,
+                    type: 'file',
+                    file_id: res.id
+                }
+                if (parentID) data['parent'] = parentID
+                add(data)
+                    .then((e) => { console.log(e) })
+                    .catch((e) => { console.log(e) })
+                fetchData()
+            })
     }
+
     return (
         <div>
-            <Button onClick={handleOpen}>Add New Folder</Button>
             <Modal
                 open={open}
                 onClose={handleClose}
@@ -56,24 +58,23 @@ export default function CreateFolder({ parentID, fetchData }) {
             >
                 <Box sx={style}>
                     <Typography id="modal-modal-title" variant="h6" component="h2">
-                        Create New Folder
+                        Upload File
                     </Typography>
                     <form
                         onSubmit={(e) => {
                             e.preventDefault()
-                            addFolder(e.target.name.value)
+                            handlerUploadFile(e.target.file.files[0])
+                            handleClose()
                         }}
                     >
                         <Stack spacing={2}>
-
-                            <TextField
-                                required
-                                id="name"
-                                label="Folder Name"
-                                placeholder="New Folder"
+                            <input
+                                id='file'
+                                type='file'
+                                name='file'
+                                placeholder='Upload File'
                             />
-
-                            <Button type="submit" variant="outlined">Create</Button>
+                            <Button type="submit" variant="outlined">Upload</Button>
                         </Stack>
                     </form>
                 </Box>
@@ -82,7 +83,9 @@ export default function CreateFolder({ parentID, fetchData }) {
     );
 }
 
-CreateFolder.propTypes = {
+UploadFile.propTypes = {
     parentID: PropTypes.string,
-    fetchData: PropTypes.func
+    fetchData: PropTypes.func,
+    open: PropTypes.bool,
+    setOpen: PropTypes.func
 }

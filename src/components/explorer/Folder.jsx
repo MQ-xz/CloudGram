@@ -21,7 +21,7 @@ function Folder(props) {
 
     return <Grid
         item
-        xs={2}
+        // xs={2}
         key={id}
     >
         <Card onClick={open}>
@@ -37,16 +37,6 @@ function Folder(props) {
                 title={<Typography noWrap>{name}</Typography>}
             />
         </Card>
-        {/* <h6>{name}
-            <span>
-                (Folder)
-                <button
-                    onClick={() => deleteItem(id)}
-                >
-                    x
-                </button>
-            </span>
-        </h6> */}
     </Grid>
 }
 

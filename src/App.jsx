@@ -10,7 +10,7 @@ import { DBConfig } from './db/config'
 initDB(DBConfig)
 
 // css
-// import './styles/app.scss'
+// import './styles/app.css'
 
 
 
