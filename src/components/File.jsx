@@ -1,5 +1,10 @@
 import PropTypes from 'prop-types';
 
+import Grid from '@mui/material/Grid';
+import Card from '@mui/material/Card';
+import CardHeader from '@mui/material/CardHeader';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
+import Typography from '@mui/material/Typography';
 import client from '../services/telegram';
 
 function File(props) {
@@ -26,9 +31,22 @@ function File(props) {
         deleteItem(id)
     }
 
-    return <div key={id}>
-        <h6>
-            {id}:{name}
+    return <Grid item xs={2} key={id}>
+        <Card onClick={downloadFile}>
+            <CardHeader
+                avatar={<AttachFileIcon />}
+                // action={
+                //     <IconButton
+                //         onClick={() => console.log('heh')}
+                //     >
+                //         <MoreVertIcon />
+                //     </IconButton>
+                // }
+                title={<Typography noWrap>{name}</Typography>}
+            />
+        </Card>
+        {/* <h6>
+            {name}
             <span>(file)
                 <button onClick={handleDeleteFile}>
                     x
@@ -39,8 +57,8 @@ function File(props) {
                     DownLoad
                 </button>
             </span>
-        </h6>
-    </div >
+        </h6> */}
+    </Grid >
 }
 
 File.propTypes = {

@@ -3,12 +3,17 @@ import { BrowserRouter } from 'react-router-dom'
 import { initDB } from 'react-indexed-db-hook'
 
 import { AuthRoutes, UnAuthRoutes } from './AppRoutes'
-
 import client from './services/telegram'
 
 // initDB
 import { DBConfig } from './db/config'
 initDB(DBConfig)
+
+// css
+// import './styles/app.scss'
+
+
+
 
 export default function App() {
     const [isLoading, setIsLoading] = useState(false)

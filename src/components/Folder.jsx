@@ -1,16 +1,43 @@
 import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
+import Grid from '@mui/material/Grid';
+
+import Card from '@mui/material/Card';
+import CardHeader from '@mui/material/CardHeader';
+import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import Typography from '@mui/material/Typography';
+
+
 
 function Folder(props) {
 
-    const { id, name, deleteItem } = props
+    const { id, name, deleteItem, workDir, setWorkDir } = props
     const navigate = useNavigate();
 
-    return <div
+    function open() {
+        setWorkDir([...workDir, { id, name }])
+        navigate(`/folder/${id}`)
+    }
+
+    return <Grid
+        item
+        xs={2}
         key={id}
-        onClick={() => { navigate(`/folder/${id}`) }}
     >
-        <h6>{id}:{name}
+        <Card onClick={open}>
+            <CardHeader
+                avatar={<FolderOpenIcon />}
+                // action={
+                //     <IconButton
+                //         onClick={() => console.log('heh')}
+                //     >
+                //         <MoreVertIcon />
+                //     </IconButton>
+                // }
+                title={<Typography noWrap>{name}</Typography>}
+            />
+        </Card>
+        {/* <h6>{name}
             <span>
                 (Folder)
                 <button
@@ -19,14 +46,16 @@ function Folder(props) {
                     x
                 </button>
             </span>
-        </h6>
-    </div>
+        </h6> */}
+    </Grid>
 }
 
 Folder.propTypes = {
     id: PropTypes.string,
     name: PropTypes.string,
-    deleteItem: PropTypes.func
+    deleteItem: PropTypes.func,
+    workDir: PropTypes.array,
+    setWorkDir: PropTypes.func,
 }
 
 export default Folder
