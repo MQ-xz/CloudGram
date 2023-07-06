@@ -12,16 +12,13 @@ initDB(DBConfig)
 // css
 // import './styles/app.css'
 
-
-
-
 export default function App() {
     const [isLoading, setIsLoading] = useState(false)
-    const [isAuthenticated, setIsAuthenticated] = useState(true)
+    const [isAuthenticated, setIsAuthenticated] = useState(false)
 
     useEffect(() => {
         checkAuth()
-    })
+    }, [])
 
     async function checkAuth() {
         setIsLoading(true)

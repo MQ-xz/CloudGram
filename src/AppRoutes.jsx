@@ -2,8 +2,8 @@ import { Routes, Route } from "react-router-dom";
 import Container from '@mui/material/Container';
 
 import Explorer from "./pages/main/Explorer";
-import Login from "./pages/auth/Login";
 import ResponsiveAppBar from "./components/AppBar";
+import Login from "./pages/auth/Login";
 
 
 export function AuthRoutes() {

@@ -1,23 +1,29 @@
-import { useState } from "react"
+import { useState } from 'react';
 import { Api } from "telegram"
+import {
+    Button,
+    Container,
+    Grid,
+    TextField,
+    Typography,
+    Box,
+} from '@mui/material';
+import CircularProgress from '@mui/material/CircularProgress';
 
 import client from "../../services/telegram"
 import { API_ID, API_HASH } from "../../config/config"
 
-function Login() {
-    /**
-     * 
-     * @todo: Password login
-     * 
-     */
-    const [phoneNumber, setPhoneNumber] = useState(null)
-    const [phoneCodeHash, setPhoneCodeHash] = useState(null)
-    const [code, setCode] = useState(null)
+export default function Login() {
 
-    const sendCode = async (e) => {
-        e.preventDefault()
+    const [isLoading, setIsLoading] = useState(false)
+    const [phoneNumber, setPhoneNumber] = useState('');
+    const [phoneCodeHash, setPhoneCodeHash] = useState('')
+    const [code, setCode] = useState('');
+    const [error, setError] = useState(null)
+
+    const sendCode = async () => {
         await client.connect()
-        const result = await client.invoke(
+        client.invoke(
             new Api.auth.SendCode({
                 phoneNumber: phoneNumber,
                 apiId: API_ID,
@@ -29,66 +35,115 @@ function Login() {
                     allowMissedCall: true,
                 }),
             })
-        );
-        console.log(result); // prints the result 
-        setPhoneCodeHash(result.phoneCodeHash)
+        ).then(res => {
+            console.log(res)
+            setPhoneCodeHash(res.phoneCodeHash)
+            setIsLoading(false)
+        }).catch(err => {
+            console.log(err.errorMessage)
+            setError(err.errorMessage)
+            setIsLoading(false)
+        })
     }
 
-    const Login = async (e) => {
-        e.preventDefault()
-        const result = await client.invoke(
+    const Login = async () => {
+        client.invoke(
             new Api.auth.SignIn({
                 phoneNumber: phoneNumber,
                 phoneCodeHash: phoneCodeHash,
                 phoneCode: code,
             })
-        );
-        console.log(result);
-        // await client.start({
-        //     botAuthToken: '5117729294:AAF6p46jDT5Sw1fKNfhwXmho7nPZ2vW1nlQ'
-        // })
-        console.log(client.session.save())
+        ).then(res => {
+            console.log(res)
+            console.log(client.session.save())
+            setIsLoading(false)
+        }).catch(err => {
+            console.log(err.errorMessage)
+            setError(err.errorMessage)
+            setIsLoading(false)
+        })
     }
 
-    return (
-        <>
-            <h1>Login</h1>
-            {
-                !phoneCodeHash && (
-                    <>
-                        <input
-                            type="text"
-                            name="phoneNumber"
-                            value={phoneNumber}
-                            onChange={(e) => setPhoneNumber(e.target.value)}
-                        />
-                        <input
-                            type="submit"
-                            value="Send code"
-                            onClick={sendCode}
-                        />
-                    </>
-                )
-            }
-            {
-                phoneCodeHash && (
-                    <>
-                        <input
-                            type="text"
-                            name="code"
-                            value={code}
-                            onChange={(e) => setCode(e.target.value)}
-                        />
-                        <input
-                            type="submit"
-                            value="Login"
-                            onClick={Login}
-                        />
-                    </>
-                )
-            }
-        </>
-    )
-}
+    const handleLogin = () => {
+        setError(null)
+        setIsLoading(true);
+        if (phoneCodeHash && phoneNumber && code)
+            Login()
+        else if (phoneNumber)
+            sendCode()
+        else
+            setIsLoading(false)
+    };
 
-export default Login
+    return (
+        <Box
+            display="flex"
+            justifyContent="center"
+            alignItems="center"
+            minHeight="100vh"
+        >
+            <Container maxWidth="xs">
+                <Grid container spacing={2}>
+                    <Grid item xs={12}>
+                        <Typography variant="h2">
+                            CloudGram
+                        </Typography>
+                        <Typography variant="body2">
+                            {
+                                !phoneCodeHash ?
+                                    <>Login with your telegram account,<br />
+                                        Please confirm your country code too.</>
+                                    :
+                                    <>Enter the OTP sent to your phone number or telegram</>
+                            }
+                        </Typography>
+                    </Grid>
+                    {
+                        !phoneCodeHash ?
+                            <Grid item xs={12}>
+                                <TextField
+                                    label="Phone Number"
+                                    variant="outlined"
+                                    required
+                                    fullWidth
+                                    value={phoneNumber}
+                                    onChange={e => setPhoneNumber(e.target.value)}
+                                    error={error ? true : false}
+                                    helperText={error}
+                                />
+                            </Grid>
+                            :
+                            <Grid item xs={12}>
+                                <TextField
+                                    required
+                                    label="OTP"
+                                    variant="outlined"
+                                    fullWidth
+                                    value={code}
+                                    onChange={e => setCode(e.target.value)}
+                                    error={error ? true : false}
+                                    helperText={error}
+                                />
+                            </Grid>
+                    }
+                    <Grid item xs={12}>
+                        <Button
+                            variant="outlined"
+                            color="primary"
+                            fullWidth
+                            onClick={handleLogin}
+                            disabled={isLoading}
+                        >
+                            {
+                                isLoading ?
+                                    <CircularProgress size={24} />
+                                    :
+                                    !phoneCodeHash ? 'Next' : 'Login'
+                            }
+                        </Button>
+                    </Grid>
+                </Grid>
+            </Container>
+        </Box>
+    );
+}
