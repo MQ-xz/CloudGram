@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useDispatch } from 'react-redux';
 import { Api } from "telegram"
 import {
     Button,
@@ -12,8 +13,11 @@ import CircularProgress from '@mui/material/CircularProgress';
 
 import client from "../../services/telegram"
 import { API_ID, API_HASH } from "../../config/config"
+import { authenticateUser } from '../../redux/actions/authAction';
 
 export default function Login() {
+
+    const dispatch = useDispatch()
 
     const [isLoading, setIsLoading] = useState(false)
     const [phoneNumber, setPhoneNumber] = useState('');
@@ -21,8 +25,7 @@ export default function Login() {
     const [code, setCode] = useState('');
     const [error, setError] = useState(null)
 
-    const sendCode = async () => {
-        await client.connect()
+    const sendCode = () => {
         client.invoke(
             new Api.auth.SendCode({
                 phoneNumber: phoneNumber,
@@ -38,15 +41,13 @@ export default function Login() {
         ).then(res => {
             console.log(res)
             setPhoneCodeHash(res.phoneCodeHash)
-            setIsLoading(false)
         }).catch(err => {
             console.log(err.errorMessage)
             setError(err.errorMessage)
-            setIsLoading(false)
-        })
+        }).finally(() => setIsLoading(false))
     }
 
-    const Login = async () => {
+    const Login = () => {
         client.invoke(
             new Api.auth.SignIn({
                 phoneNumber: phoneNumber,
@@ -55,13 +56,12 @@ export default function Login() {
             })
         ).then(res => {
             console.log(res)
-            console.log(client.session.save())
-            setIsLoading(false)
+            client.session.save()
+            dispatch(authenticateUser())
         }).catch(err => {
             console.log(err.errorMessage)
             setError(err.errorMessage)
-            setIsLoading(false)
-        })
+        }).finally(() => setIsLoading(false))
     }
 
     const handleLogin = () => {

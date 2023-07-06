@@ -1,9 +1,12 @@
+import { PropTypes } from 'prop-types'
 import { useEffect, useState } from 'react'
 import { BrowserRouter } from 'react-router-dom'
 import { initDB } from 'react-indexed-db-hook'
+import { connect } from 'react-redux'
 
 import { AuthRoutes, UnAuthRoutes } from './AppRoutes'
 import client from './services/telegram'
+import { authenticateUser } from './redux/actions/authAction'
 
 // initDB
 import { DBConfig } from './db/config'
@@ -12,9 +15,9 @@ initDB(DBConfig)
 // css
 // import './styles/app.css'
 
-export default function App() {
+function App(props) {
+    const { dispatch, isAuthenticated } = props
     const [isLoading, setIsLoading] = useState(false)
-    const [isAuthenticated, setIsAuthenticated] = useState(false)
 
     useEffect(() => {
         checkAuth()
@@ -23,7 +26,7 @@ export default function App() {
     async function checkAuth() {
         setIsLoading(true)
         if (!isAuthenticated && await client.isUserAuthorized()) {
-            setIsAuthenticated(true)
+            dispatch(authenticateUser())
         }
         setIsLoading(false)
     }
@@ -42,3 +45,18 @@ export default function App() {
 
     )
 }
+
+
+const mapStateToProps = state => {
+    return {
+        dispatch: state.dispatch,
+        isAuthenticated: state.auth.isAuthenticated
+    }
+}
+
+App.propTypes = {
+    dispatch: PropTypes.func.isRequired,
+    isAuthenticated: PropTypes.bool.isRequired
+}
+
+export default connect(mapStateToProps)(App)
