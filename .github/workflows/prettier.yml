@@ -1,10 +1,10 @@
-name: Lint check
+name: Prettier check
 
 on: [push]
 
 jobs:
   lint:
-    name: Lint with ESlint
+    name: Lint with Prettier
     runs-on: ubuntu-latest
 
     steps:
@@ -12,9 +12,6 @@ jobs:
 
       - name: Install modules
         run: npm install
-
-      - name: copy .env.example to .env
-        run: cp .env.example .env
 
       - name: Run ESLint check
         run: npm run lint
