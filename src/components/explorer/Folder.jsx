@@ -7,13 +7,14 @@ import Typography from '@mui/material/Typography';
 
 function Folder(props) {
 
-    const { id, name, deleteItem, workDir, setWorkDir } = props
+    const { id, name, workDir, setWorkDir } = props
     const navigate = useNavigate();
 
     /**
      * 
      * @todo: folder delete
      */
+
     function open() {
         setWorkDir([...workDir, { id, name }])
         navigate(`/folder/${id}`)
@@ -43,7 +44,7 @@ function Folder(props) {
 Folder.propTypes = {
     id: PropTypes.string,
     name: PropTypes.string,
-    deleteItem: PropTypes.func,
+    // deleteItem: PropTypes.func,
     workDir: PropTypes.array,
     setWorkDir: PropTypes.func,
 }

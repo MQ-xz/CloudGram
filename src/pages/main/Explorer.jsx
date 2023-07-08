@@ -61,7 +61,7 @@ export default function Explorer() {
                                     key={item.id}
                                     id={item.id}
                                     name={item.name}
-                                    deleteItem={deleteItem}
+                                    // deleteItem={deleteItem}
                                     workDir={workDir}
                                     setWorkDir={setWorkDir}
                                 />
