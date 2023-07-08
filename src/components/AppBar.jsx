@@ -1,12 +1,11 @@
 import { AppBar, Toolbar, Typography, Container } from "@mui/material";
-import CloudIcon from "@mui/icons-material/Cloud";
 
 function ResponsiveAppBar() {
     return (
         <AppBar position="static">
             <Container maxWidth="xl">
                 <Toolbar disableGutters>
-                    <CloudIcon sx={{ mr: 1 }} />
+                    <img src="/CloudGram.svg" width={40} style={{ marginRight: "10px" }} />
                     <Typography
                         variant="h6"
                         noWrap
