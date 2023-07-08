@@ -13,5 +13,5 @@ jobs:
       - name: Install modules
         run: npm install
 
-      - name: Run ESLint check
-        run: npm run lint
+      - name: Run Prettier check
+        run: npm run prettier

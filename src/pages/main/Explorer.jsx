@@ -24,6 +24,7 @@ export default function Explorer() {
 
   useEffect(() => {
     fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parentID]);
 
   function fetchData() {

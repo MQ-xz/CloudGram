@@ -20,6 +20,7 @@ import client from "../../services/telegram";
 import ProgressCircle from "../ProgressCircle";
 import downloadFile from "../../utils/downloadFile";
 
+// eslint-disable-next-line react-refresh/only-export-components
 function File(props) {
   const { id, name, file_id, deleteItem, activeProgress } = props;
   /**
@@ -115,4 +116,5 @@ File.propTypes = {
   activeProgress: PropTypes.object,
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export default connect(mapStateToProps)(File);

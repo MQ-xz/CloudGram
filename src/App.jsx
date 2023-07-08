@@ -16,13 +16,14 @@ initDB(DBConfig);
 // css
 // import './styles/app.css'
 
+// eslint-disable-next-line react-refresh/only-export-components
 function App(props) {
   const { dispatch, isAuthenticated } = props;
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     checkAuth();
-  }, []);
+  });
 
   async function checkAuth() {
     await client.connect();
@@ -59,4 +60,5 @@ App.propTypes = {
   isAuthenticated: PropTypes.bool.isRequired,
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export default connect(mapStateToProps)(App);
