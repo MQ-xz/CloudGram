@@ -6,11 +6,11 @@ CloudGram takes advantage of Telegram's robust cloud storage infrastructure and 
 
 ## Features
 
-- **Upload and Store Files**: Easily upload files CloudGram's intuitive interface. All files are stored securely on your own Telegram account's saved messages page.
+-   **Upload and Store Files**: Easily upload files CloudGram's intuitive interface. All files are stored securely on your own Telegram account's saved messages page.
 
-- **Organized File Management**: CloudGram provides a simple yet powerful folder-based organization system for your files. Create folders and maintain a structured file storage system.
+-   **Organized File Management**: CloudGram provides a simple yet powerful folder-based organization system for your files. Create folders and maintain a structured file storage system.
 
-- **Privacy**: CloudGram prioritizes your privacy. Since the data is stored locally on your browser and in your Telegram account, neither CloudGram nor any third party can access your files and data without your explicit permission.
+-   **Privacy**: CloudGram prioritizes your privacy. Since the data is stored locally on your browser and in your Telegram account, neither CloudGram nor any third party can access your files and data without your explicit permission.
 
 ## Getting Started
 
@@ -36,25 +36,27 @@ cd CloudGram
 
     Create a copy for .env.example and name it as .env and VITE_API_ID and VITE_API_HASH with your own telegram application API_ID and API_HASH. for more info about obtaining API check [Creating your Telegram Application](https://core.telegram.org/api/obtaining_api_id).
 
-3. Install the project dependencies:
+4. Install the project dependencies:
 
 ```bash
 npm install
 ```
 
-4. Start the development server:
+5. Start the development server:
 
 ```bash
 npm run dev
 ```
 
-5. Access CloudGram in your web browser at `http://localhost:5173/`.
+6. Access CloudGram in your web browser at `http://localhost:5173/`.
 
 ## Contribution, Feature Requests & Bugs
-- For Contribution read CONTRIBUTING.md.
-- Use GitHub issues for opening bugs and feature requests
+
+-   For Contribution read CONTRIBUTING.md.
+-   Use GitHub issues for opening bugs and feature requests
 
 ## Contact
+
 If you have any questions, suggestions, or feedback, please feel free to contact us via out telegram group [https://t.me/CloudGramApp](https://t.me/CloudGramApp).
 
 Enjoy free and private cloud storage with CloudGram!
