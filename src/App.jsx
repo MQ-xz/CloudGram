@@ -10,6 +10,7 @@ import { authenticateUser } from './redux/actions/authAction'
 
 // initDB
 import { DBConfig } from './db/config'
+import SplashScreen from './components/SplashScreen'
 initDB(DBConfig)
 
 // css
@@ -17,14 +18,14 @@ initDB(DBConfig)
 
 function App(props) {
     const { dispatch, isAuthenticated } = props
-    const [isLoading, setIsLoading] = useState(false)
+    const [isLoading, setIsLoading] = useState(true)
 
     useEffect(() => {
         checkAuth()
     }, [])
 
     async function checkAuth() {
-        setIsLoading(true)
+        await client.connect()
         if (!isAuthenticated && await client.isUserAuthorized()) {
             dispatch(authenticateUser())
         }
@@ -35,7 +36,7 @@ function App(props) {
         <>
             <BrowserRouter>
                 {
-                    isLoading ? <p>Loading...</p>
+                    isLoading ? <SplashScreen />
                         : isAuthenticated ? <AuthRoutes />
                             :
                             <UnAuthRoutes />
