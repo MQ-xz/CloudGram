@@ -1,15 +1,14 @@
-import { PropTypes } from 'prop-types';
-import { useState } from 'react';
+import { PropTypes } from "prop-types";
+import { useState } from "react";
 
-import { Box, SpeedDial, SpeedDialIcon, SpeedDialAction } from '@mui/material';
-import FolderOpenIcon from '@mui/icons-material/FolderOpen';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
+import { Box, SpeedDial, SpeedDialIcon, SpeedDialAction } from "@mui/material";
+import FolderOpenIcon from "@mui/icons-material/FolderOpen";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
 
-import CreateFolder from './CreateFolder';
-import UploadFile from './UploadFile';
+import CreateFolder from "./CreateFolder";
+import UploadFile from "./UploadFile";
 
 export default function CreateButton(props) {
-
     const { parentID, fetchData } = props;
 
     const [open, setOpen] = useState(false);
@@ -19,19 +18,23 @@ export default function CreateButton(props) {
     const [openCreateFolder, setOpenCreateFolder] = useState(false);
     const [openUploadFile, setOpenUploadFile] = useState(false);
 
-    const onFolderClick = () => setOpenCreateFolder(true)
-    const onFileClick = () => setOpenUploadFile(true)
+    const onFolderClick = () => setOpenCreateFolder(true);
+    const onFileClick = () => setOpenUploadFile(true);
 
     const actions = [
-        { icon: <UploadFileIcon />, name: 'Upload File', onClick: onFileClick },
-        { icon: <FolderOpenIcon />, name: 'New Folder', onClick: onFolderClick },
+        { icon: <UploadFileIcon />, name: "Upload File", onClick: onFileClick },
+        {
+            icon: <FolderOpenIcon />,
+            name: "New Folder",
+            onClick: onFolderClick,
+        },
     ];
 
     return (
-        <Box sx={{ position: 'absolute', bottom: 16, right: 16 }}>
+        <Box sx={{ position: "absolute", bottom: 16, right: 16 }}>
             <SpeedDial
                 ariaLabel="SpeedDial controlled open example"
-                sx={{ position: 'absolute', bottom: 16, right: 16 }}
+                sx={{ position: "absolute", bottom: 16, right: 16 }}
                 icon={<SpeedDialIcon />}
                 onClose={handleClose}
                 onOpen={handleOpen}
@@ -65,4 +68,4 @@ export default function CreateButton(props) {
 CreateButton.propTypes = {
     parentID: PropTypes.string,
     fetchData: PropTypes.func,
-}
+};

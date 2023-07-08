@@ -1,8 +1,7 @@
-import { AppBar, Toolbar, Typography, Container } from '@mui/material';
-import CloudIcon from '@mui/icons-material/Cloud';
+import { AppBar, Toolbar, Typography, Container } from "@mui/material";
+import CloudIcon from "@mui/icons-material/Cloud";
 
 function ResponsiveAppBar() {
-
     return (
         <AppBar position="static">
             <Container maxWidth="xl">
@@ -15,11 +14,11 @@ function ResponsiveAppBar() {
                         // href="/"
                         sx={{
                             mr: 2,
-                            fontFamily: 'monospace',
+                            fontFamily: "monospace",
                             fontWeight: 700,
-                            letterSpacing: '.3rem',
-                            color: 'inherit',
-                            textDecoration: 'none',
+                            letterSpacing: ".3rem",
+                            color: "inherit",
+                            textDecoration: "none",
                         }}
                     >
                         CloudGram

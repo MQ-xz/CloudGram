@@ -1,10 +1,9 @@
 import { Routes, Route } from "react-router-dom";
-import Container from '@mui/material/Container';
+import Container from "@mui/material/Container";
 
 import Explorer from "./pages/main/Explorer";
 import ResponsiveAppBar from "./components/AppBar";
 import Login from "./pages/auth/Login";
-
 
 export function AuthRoutes() {
     return (
@@ -17,14 +16,13 @@ export function AuthRoutes() {
                 </Routes>
             </Container>
         </>
-    )
+    );
 }
-
 
 export function UnAuthRoutes() {
     return (
         <Routes>
             <Route path="/" element={<Login />} />
         </Routes>
-    )
+    );
 }

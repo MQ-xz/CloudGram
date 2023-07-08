@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import PropTypes from 'prop-types';
-import { connect } from 'react-redux';
+import { useState } from "react";
+import PropTypes from "prop-types";
+import { connect } from "react-redux";
 
 import {
     Card,
@@ -10,33 +10,34 @@ import {
     Menu,
     MenuItem,
     Typography,
-} from '@mui/material';
-import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
-import FileUploadIcon from '@mui/icons-material/FileUpload';
-import FileDownloadIcon from '@mui/icons-material/FileDownload';
+} from "@mui/material";
+import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import FileUploadIcon from "@mui/icons-material/FileUpload";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
 
-import client from '../../services/telegram';
-import ProgressCircle from '../ProgressCircle';
-import downloadFile from '../../utils/downloadFile';
+import client from "../../services/telegram";
+import ProgressCircle from "../ProgressCircle";
+import downloadFile from "../../utils/downloadFile";
 
+// eslint-disable-next-line react-refresh/only-export-components
 function File(props) {
-    const { id, name, file_id, deleteItem, activeProgress } = props
+    const { id, name, file_id, deleteItem, activeProgress } = props;
     /**
-     * 
+     *
      * @todo: file error
      * @todo: file download errors
      * @todo: file upload errors
      */
     function handleDownloadFile() {
-        console.log(id, file_id)
-        downloadFile(id, file_id)
-        handleClose()
+        console.log(id, file_id);
+        downloadFile(id, file_id);
+        handleClose();
     }
 
     async function handleDeleteFile() {
-        await client.deleteMessages('me', [file_id], true)
-        deleteItem(id)
+        await client.deleteMessages("me", [file_id], true);
+        deleteItem(id);
         handleClose();
     }
 
@@ -50,55 +51,63 @@ function File(props) {
         setAnchorEl(null);
     };
 
-    return <Grid item key={id}>
-        <Card>
-            <CardHeader
-                avatar={<InsertDriveFileIcon />}
-                action={
-                    <IconButton
-                        onClick={handleClick}
-                    >
-                        <MoreVertIcon />
-                    </IconButton>
-                }
-                title={
-                    /**
-                     * 
-                     * @todo: update the ui
-                     */
-                    <>
-                        {activeProgress && <>
-                            {
-                                activeProgress.type == 'DOWNLOADING' ? <FileDownloadIcon /> : <FileUploadIcon />
-                            }
-                            <ProgressCircle value={activeProgress?.percentage} />
-                        </>}
-                        <Typography>{name}</Typography>
-                    </>
-                }
-            />
-            <Menu
-                id="basic-menu"
-                anchorEl={anchorEl}
-                open={open}
-                onClose={handleClose}
-                MenuListProps={{
-                    'aria-labelledby': 'basic-button',
-                }}
-            >
-                <MenuItem onClick={handleDownloadFile}>Download</MenuItem>
-                <MenuItem onClick={handleDeleteFile}>delete</MenuItem>
-            </Menu>
-        </Card>
-    </Grid >
+    return (
+        <Grid item key={id}>
+            <Card>
+                <CardHeader
+                    avatar={<InsertDriveFileIcon />}
+                    action={
+                        <IconButton onClick={handleClick}>
+                            <MoreVertIcon />
+                        </IconButton>
+                    }
+                    title={
+                        /**
+                         *
+                         * @todo: update the ui
+                         */
+                        <>
+                            {activeProgress && (
+                                <>
+                                    {activeProgress.type == "DOWNLOADING" ? (
+                                        <FileDownloadIcon />
+                                    ) : (
+                                        <FileUploadIcon />
+                                    )}
+                                    <ProgressCircle
+                                        value={activeProgress?.percentage}
+                                    />
+                                </>
+                            )}
+                            <Typography>{name}</Typography>
+                        </>
+                    }
+                />
+                <Menu
+                    id="basic-menu"
+                    anchorEl={anchorEl}
+                    open={open}
+                    onClose={handleClose}
+                    MenuListProps={{
+                        "aria-labelledby": "basic-button",
+                    }}
+                >
+                    <MenuItem onClick={handleDownloadFile}>Download</MenuItem>
+                    <MenuItem onClick={handleDeleteFile}>delete</MenuItem>
+                </Menu>
+            </Card>
+        </Grid>
+    );
 }
 
 const mapStateToProps = (state, props) => {
     return {
         dispatch: state.dispatch,
-        activeProgress: state.progress.activeProgress.find(item => item.id === props.id)
-    }
-}
+        activeProgress: state.progress.activeProgress.find(
+            (item) => item.id === props.id,
+        ),
+    };
+};
 
 File.propTypes = {
     id: PropTypes.string,
@@ -106,7 +115,8 @@ File.propTypes = {
     file_id: PropTypes.number,
     deleteItem: PropTypes.func,
     dispatch: PropTypes.func,
-    activeProgress: PropTypes.object
-}
+    activeProgress: PropTypes.object,
+};
 
-export default connect(mapStateToProps)(File)
+// eslint-disable-next-line react-refresh/only-export-components
+export default connect(mapStateToProps)(File);
