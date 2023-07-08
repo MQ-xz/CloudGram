@@ -1,19 +1,19 @@
 import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
-import Grid from '@mui/material/Grid';
 
-import Card from '@mui/material/Card';
-import CardHeader from '@mui/material/CardHeader';
+import { Card, CardHeader, Grid } from '@mui/material';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import Typography from '@mui/material/Typography';
-
-
 
 function Folder(props) {
 
     const { id, name, deleteItem, workDir, setWorkDir } = props
     const navigate = useNavigate();
 
+    /**
+     * 
+     * @todo: folder delete
+     */
     function open() {
         setWorkDir([...workDir, { id, name }])
         navigate(`/folder/${id}`)

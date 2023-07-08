@@ -1,17 +1,12 @@
 import { PropTypes } from 'prop-types';
 import { useState } from 'react';
-import Box from '@mui/material/Box';
-import SpeedDial from '@mui/material/SpeedDial';
-import SpeedDialIcon from '@mui/material/SpeedDialIcon';
-import SpeedDialAction from '@mui/material/SpeedDialAction';
 
+import { Box, SpeedDial, SpeedDialIcon, SpeedDialAction } from '@mui/material';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 
 import CreateFolder from './CreateFolder';
 import UploadFile from './UploadFile';
-
-
 
 export default function CreateButton(props) {
 

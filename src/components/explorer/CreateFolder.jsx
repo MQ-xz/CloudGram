@@ -2,14 +2,7 @@ import { PropTypes } from 'prop-types';
 import { v4 as uuid4 } from 'uuid'
 import { useIndexedDB } from "react-indexed-db-hook"
 
-import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
-import Typography from '@mui/material/Typography';
-import Modal from '@mui/material/Modal';
-import TextField from '@mui/material/TextField';
-import Stack from '@mui/material/Stack';
-
-
+import { Box, Button, Typography, Modal, TextField, Stack } from '@mui/material';
 
 const style = {
     position: 'absolute',

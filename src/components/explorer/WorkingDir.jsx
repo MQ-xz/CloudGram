@@ -1,9 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { PropTypes } from 'prop-types';
-import Breadcrumbs from '@mui/material/Breadcrumbs';
-import Link from '@mui/material/Link';
-import Stack from '@mui/material/Stack';
-
+import { Link, Stack, Breadcrumbs } from '@mui/material/';
 
 export default function WorkingDir({ workDir, setWorkDir }) {
     const navigate = useNavigate();
