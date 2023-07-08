@@ -1,7 +1,4 @@
-import AppBar from '@mui/material/AppBar';
-import Toolbar from '@mui/material/Toolbar';
-import Typography from '@mui/material/Typography';
-import Container from '@mui/material/Container';
+import { AppBar, Toolbar, Typography, Container } from '@mui/material';
 import CloudIcon from '@mui/icons-material/Cloud';
 
 function ResponsiveAppBar() {
@@ -10,7 +7,7 @@ function ResponsiveAppBar() {
         <AppBar position="static">
             <Container maxWidth="xl">
                 <Toolbar disableGutters>
-                    <CloudIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
+                    <CloudIcon sx={{ mr: 1 }} />
                     <Typography
                         variant="h6"
                         noWrap
@@ -18,7 +15,6 @@ function ResponsiveAppBar() {
                         // href="/"
                         sx={{
                             mr: 2,
-                            display: { xs: 'none', md: 'flex' },
                             fontFamily: 'monospace',
                             fontWeight: 700,
                             letterSpacing: '.3rem',
