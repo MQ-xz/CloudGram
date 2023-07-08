@@ -5,7 +5,11 @@ function ResponsiveAppBar() {
         <AppBar position="static">
             <Container maxWidth="xl">
                 <Toolbar disableGutters>
-                    <img src="/CloudGram.svg" width={40} style={{ marginRight: "10px" }} />
+                    <img
+                        src="/CloudGram.svg"
+                        width={40}
+                        style={{ marginRight: "10px" }}
+                    />
                     <Typography
                         variant="h6"
                         noWrap
