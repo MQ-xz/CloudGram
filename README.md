@@ -1,2 +1,2 @@
 # CloudGram
-A Free Cloud with an unlimited storage on top of Telegram
+A Cloud storage on top of Telegram
