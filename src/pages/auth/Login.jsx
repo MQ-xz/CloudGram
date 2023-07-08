@@ -92,24 +92,30 @@ export default function Login() {
             minHeight="100vh"
         >
             <Container maxWidth="xs">
-                <Grid container spacing={2}>
-                    <Grid item xs={12}>
-                        <Typography variant="h2">CloudGram</Typography>
-                        <Typography variant="body2">
-                            {!phoneCodeHash ? (
-                                <>
-                                    Login with your telegram account,
-                                    <br />
-                                    Please confirm your country code too.
-                                </>
-                            ) : (
-                                <>
-                                    Enter the OTP sent to your phone number or
-                                    telegram
-                                </>
-                            )}
-                        </Typography>
-                    </Grid>
+                <Grid
+                    container
+                    spacing={2}
+                    alignItems="center"
+                    justifyContent="center"
+                >
+                    <img src="/CloudGram.svg" width={300} />
+                    <Typography variant="h2" mt={-6}>
+                        CloudGram
+                    </Typography>
+                    <Typography variant="body2">
+                        {!phoneCodeHash ? (
+                            <>
+                                Login with your telegram account,
+                                <br />
+                                Please confirm your country code too.
+                            </>
+                        ) : (
+                            <>
+                                Enter the OTP sent to your phone number or
+                                telegram
+                            </>
+                        )}
+                    </Typography>
                     {!phoneCodeHash ? (
                         <Grid item xs={12}>
                             <TextField
