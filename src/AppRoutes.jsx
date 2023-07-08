@@ -6,23 +6,23 @@ import ResponsiveAppBar from "./components/AppBar";
 import Login from "./pages/auth/Login";
 
 export function AuthRoutes() {
-  return (
-    <>
-      <ResponsiveAppBar />
-      <Container>
-        <Routes>
-          <Route path="/" element={<Explorer />} />
-          <Route path="/folder/:parentID" element={<Explorer />} />
-        </Routes>
-      </Container>
-    </>
-  );
+    return (
+        <>
+            <ResponsiveAppBar />
+            <Container>
+                <Routes>
+                    <Route path="/" element={<Explorer />} />
+                    <Route path="/folder/:parentID" element={<Explorer />} />
+                </Routes>
+            </Container>
+        </>
+    );
 }
 
 export function UnAuthRoutes() {
-  return (
-    <Routes>
-      <Route path="/" element={<Login />} />
-    </Routes>
-  );
+    return (
+        <Routes>
+            <Route path="/" element={<Login />} />
+        </Routes>
+    );
 }

@@ -18,46 +18,46 @@ initDB(DBConfig);
 
 // eslint-disable-next-line react-refresh/only-export-components
 function App(props) {
-  const { dispatch, isAuthenticated } = props;
-  const [isLoading, setIsLoading] = useState(true);
+    const { dispatch, isAuthenticated } = props;
+    const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    checkAuth();
-  });
+    useEffect(() => {
+        checkAuth();
+    });
 
-  async function checkAuth() {
-    await client.connect();
-    if (!isAuthenticated && (await client.isUserAuthorized())) {
-      dispatch(authenticateUser());
+    async function checkAuth() {
+        await client.connect();
+        if (!isAuthenticated && (await client.isUserAuthorized())) {
+            dispatch(authenticateUser());
+        }
+        setIsLoading(false);
     }
-    setIsLoading(false);
-  }
 
-  return (
-    <>
-      <BrowserRouter>
-        {isLoading ? (
-          <SplashScreen />
-        ) : isAuthenticated ? (
-          <AuthRoutes />
-        ) : (
-          <UnAuthRoutes />
-        )}
-      </BrowserRouter>
-    </>
-  );
+    return (
+        <>
+            <BrowserRouter>
+                {isLoading ? (
+                    <SplashScreen />
+                ) : isAuthenticated ? (
+                    <AuthRoutes />
+                ) : (
+                    <UnAuthRoutes />
+                )}
+            </BrowserRouter>
+        </>
+    );
 }
 
 const mapStateToProps = (state) => {
-  return {
-    dispatch: state.dispatch,
-    isAuthenticated: state.auth.isAuthenticated,
-  };
+    return {
+        dispatch: state.dispatch,
+        isAuthenticated: state.auth.isAuthenticated,
+    };
 };
 
 App.propTypes = {
-  dispatch: PropTypes.func.isRequired,
-  isAuthenticated: PropTypes.bool.isRequired,
+    dispatch: PropTypes.func.isRequired,
+    isAuthenticated: PropTypes.bool.isRequired,
 };
 
 // eslint-disable-next-line react-refresh/only-export-components
