@@ -18,6 +18,10 @@ import { authenticateUser } from '../../redux/actions/authAction';
 
 export default function Login() {
 
+    /**
+     * @todo: add support fot 2FA enabled accounts
+     */
+
     const dispatch = useDispatch()
 
     const [isLoading, setIsLoading] = useState(false)
