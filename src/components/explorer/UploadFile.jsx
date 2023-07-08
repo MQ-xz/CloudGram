@@ -2,14 +2,9 @@ import { PropTypes } from 'prop-types';
 import { v4 as uuid4 } from 'uuid'
 import { useIndexedDB } from "react-indexed-db-hook"
 
-import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
-import Typography from '@mui/material/Typography';
-import Modal from '@mui/material/Modal';
-import Stack from '@mui/material/Stack';
+import { Box, Button, Typography, Modal, Stack } from '@mui/material';
 
 import uploadFile from "../../utils/uploadFile"
-
 
 const style = {
     position: 'absolute',
@@ -25,27 +20,30 @@ const style = {
 
 export default function UploadFile({ parentID, fetchData, open, setOpen }) {
 
-    const handleClose = () => setOpen(false);
+    const { add, update } = useIndexedDB('file')
 
-    const { add } = useIndexedDB('file')
+    const handleClose = () => setOpen(false);
 
     function handlerUploadFile(file) {
         console.log('handlerUploadFile')
-        uploadFile(file)
+        let data = {
+            id: uuid4(),
+            name: file.name,
+            type: 'file',
+        }
+        if (parentID) data['parent'] = parentID
+        add(data)
+            .then((e) => { console.log(e) })
+            .catch((e) => { console.log(e) })
+        uploadFile(data.id, file)
             .then((res) => {
                 console.log(res, 'handlerUploadFile')
-                let data = {
-                    id: uuid4(),
-                    name: file.name,
-                    type: 'file',
-                    file_id: res.id
-                }
-                if (parentID) data['parent'] = parentID
-                add(data)
+                update({ ...data, file_id: res.id })
                     .then((e) => { console.log(e) })
                     .catch((e) => { console.log(e) })
-                fetchData()
             })
+            .catch((e) => { console.log(e) })
+        fetchData()
     }
 
     return (

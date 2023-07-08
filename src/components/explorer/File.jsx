@@ -1,38 +1,37 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
+import { connect } from 'react-redux';
 
-import Grid from '@mui/material/Grid';
-import Card from '@mui/material/Card';
-import CardHeader from '@mui/material/CardHeader';
+import {
+    Card,
+    CardHeader,
+    Grid,
+    IconButton,
+    Menu,
+    MenuItem,
+    Typography,
+} from '@mui/material';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
-import Typography from '@mui/material/Typography';
-import Menu from '@mui/material/Menu';
-import MenuItem from '@mui/material/MenuItem';
-import IconButton from '@mui/material/IconButton';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
-
-
+import FileUploadIcon from '@mui/icons-material/FileUpload';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
 
 import client from '../../services/telegram';
+import ProgressCircle from '../ProgressCircle';
+import downloadFile from '../../utils/downloadFile';
 
 function File(props) {
-    const { id, name, file_id, deleteItem } = props
-
-    async function downloadFile() {
-        const message = await client.getMessages('me', { ids: file_id })
-        const media = message[0].media
-        if (media) {
-            const file = await client.downloadMedia(media)
-            var blob = new Blob([file], { type: media.document.mimeType })
-            var url = URL.createObjectURL(blob)
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = name;
-            link.click();
-            URL.revokeObjectURL(url);
-            link.remove();
-        }
-        handleClose();
+    const { id, name, file_id, deleteItem, activeProgress } = props
+    /**
+     * 
+     * @todo: file error
+     * @todo: file download errors
+     * @todo: file upload errors
+     */
+    function handleDownloadFile() {
+        console.log(id, file_id)
+        downloadFile(id, file_id)
+        handleClose()
     }
 
     async function handleDeleteFile() {
@@ -62,7 +61,21 @@ function File(props) {
                         <MoreVertIcon />
                     </IconButton>
                 }
-                title={<Typography>{name}</Typography>}
+                title={
+                    /**
+                     * 
+                     * @todo: update the ui
+                     */
+                    <>
+                        {activeProgress && <>
+                            {
+                                activeProgress.type == 'DOWNLOADING' ? <FileDownloadIcon /> : <FileUploadIcon />
+                            }
+                            <ProgressCircle value={activeProgress?.percentage} />
+                        </>}
+                        <Typography>{name}</Typography>
+                    </>
+                }
             />
             <Menu
                 id="basic-menu"
@@ -73,31 +86,27 @@ function File(props) {
                     'aria-labelledby': 'basic-button',
                 }}
             >
-                <MenuItem onClick={downloadFile}>Download</MenuItem>
+                <MenuItem onClick={handleDownloadFile}>Download</MenuItem>
                 <MenuItem onClick={handleDeleteFile}>delete</MenuItem>
             </Menu>
         </Card>
-        {/* <h6>
-            {name}
-            <span>(file)
-                <button onClick={handleDeleteFile}>
-                    x
-                </button>
-                <button
-                    onClick={downloadFile}
-                >
-                    DownLoad
-                </button>
-            </span>
-        </h6> */}
     </Grid >
+}
+
+const mapStateToProps = (state, props) => {
+    return {
+        dispatch: state.dispatch,
+        activeProgress: state.progress.activeProgress.find(item => item.id === props.id)
+    }
 }
 
 File.propTypes = {
     id: PropTypes.string,
     name: PropTypes.string,
     file_id: PropTypes.number,
-    deleteItem: PropTypes.func
+    deleteItem: PropTypes.func,
+    dispatch: PropTypes.func,
+    activeProgress: PropTypes.object
 }
 
-export default File
+export default connect(mapStateToProps)(File)
