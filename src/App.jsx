@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { BrowserRouter } from "react-router-dom";
 import { initDB } from "react-indexed-db-hook";
 import { connect } from "react-redux";
-import { Analytics } from "@vercel/analytics/react";
 
 import { AuthRoutes, UnAuthRoutes } from "./AppRoutes";
 import client from "./services/telegram";
@@ -36,7 +35,6 @@ function App(props) {
 
     return (
         <>
-            <Analytics />
             <BrowserRouter>
                 {isLoading ? (
                     <SplashScreen />
