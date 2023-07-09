@@ -52,7 +52,7 @@ npm run dev
 
 ## Contribution, Feature Requests & Bugs
 
--   For Contribution read CONTRIBUTING.md.
+-   For Contribution read [CONTRIBUTING.md](https://github.com/MQ-xz/CloudGram/blob/main/CONTRIBUTING.md).
 -   Use GitHub issues for opening bugs and feature requests
 
 ## Contact
