@@ -17,10 +17,6 @@ import { API_ID, API_HASH } from "../../config/config";
 import { authenticateUser } from "../../redux/actions/authAction";
 
 export default function Login() {
-    /**
-     * @todo: handler wrong password
-     */
-
     const dispatch = useDispatch();
 
     const [isLoading, setIsLoading] = useState(false);
@@ -29,7 +25,7 @@ export default function Login() {
     const [password, setPassword] = useState("");
     const [passwordEnabled, setPasswordEnabled] = useState(null);
     const [phoneCode, setPhoneCode] = useState("");
-    const [error, setError] = useState(null);
+    const [error, setError] = useState({});
 
     const sendCode = () => {
         client
@@ -52,14 +48,19 @@ export default function Login() {
             })
             .catch((err) => {
                 console.log(err.errorMessage);
-                setError(err.errorMessage);
+                setError({ ...error, phoneNumber: err.errorMessage });
             })
             .finally(() => setIsLoading(false));
     };
 
     const onError = (err) => {
-        console.log(err, "onError");
-        setError(err.errorMessage);
+        console.log(err.errorMessage, "onError");
+        setError({ ...error, password: err.errorMessage });
+        return true;
+    };
+
+    const getPassword = () => {
+        return password;
     };
 
     const Login = () => {
@@ -71,7 +72,7 @@ export default function Login() {
                         apiHash: API_HASH,
                     },
                     {
-                        password: password,
+                        password: getPassword,
                         onError: onError,
                     },
                 )
@@ -82,7 +83,7 @@ export default function Login() {
                 })
                 .catch((err) => {
                     console.log(err);
-                    setError(err.errorMessage);
+                    // setError(err.errorMessage);
                 })
                 .finally(() => setIsLoading(false));
         } else {
@@ -104,7 +105,7 @@ export default function Login() {
                     if (err.errorMessage === "SESSION_PASSWORD_NEEDED") {
                         setPasswordEnabled(true);
                     } else {
-                        setError(err.errorMessage);
+                        setError({ ...error, phoneCode: err.errorMessage });
                     }
                 })
                 .finally(() => setIsLoading(false));
@@ -112,7 +113,7 @@ export default function Login() {
     };
 
     const handleLogin = () => {
-        setError(null);
+        setError({});
         setIsLoading(true);
         if (phoneCodeHash && phoneNumber && phoneCode) Login();
         else if (phoneNumber) sendCode();
@@ -160,8 +161,8 @@ export default function Login() {
                                 fullWidth
                                 value={phoneNumber}
                                 onChange={(e) => setPhoneNumber(e.target.value)}
-                                error={error ? true : false}
-                                helperText={error}
+                                error={error?.phoneNumber ? true : false}
+                                helperText={error?.phoneNumber}
                             />
                         </Grid>
                     ) : (
@@ -173,8 +174,8 @@ export default function Login() {
                                 fullWidth
                                 value={phoneCode}
                                 onChange={(e) => setPhoneCode(e.target.value)}
-                                error={error ? true : false}
-                                helperText={error}
+                                error={error?.phoneCode ? true : false}
+                                helperText={error?.phoneCode}
                             />
                         </Grid>
                     )}
@@ -188,8 +189,8 @@ export default function Login() {
                                 fullWidth
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                error={error ? true : false}
-                                helperText={error}
+                                error={error?.password ? true : false}
+                                helperText={error?.password}
                             />
                         </Grid>
                     )}
