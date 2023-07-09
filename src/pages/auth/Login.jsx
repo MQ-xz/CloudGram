@@ -18,7 +18,7 @@ import { authenticateUser } from "../../redux/actions/authAction";
 
 export default function Login() {
     /**
-     * @todo: add support fot 2FA enabled accounts
+     * @todo: handler wrong password
      */
 
     const dispatch = useDispatch();
@@ -26,8 +26,8 @@ export default function Login() {
     const [isLoading, setIsLoading] = useState(false);
     const [phoneNumber, setPhoneNumber] = useState("");
     const [phoneCodeHash, setPhoneCodeHash] = useState("");
-    const [password, setPassword] = useState("")
-    const [passwordEnabled, setPasswordEnabled] = useState(null)
+    const [password, setPassword] = useState("");
+    const [passwordEnabled, setPasswordEnabled] = useState(null);
     const [phoneCode, setPhoneCode] = useState("");
     const [error, setError] = useState(null);
 
@@ -49,35 +49,42 @@ export default function Login() {
             .then((res) => {
                 console.log(res);
                 setPhoneCodeHash(res.phoneCodeHash);
-            }).catch((err) => {
+            })
+            .catch((err) => {
                 console.log(err.errorMessage);
                 setError(err.errorMessage);
-            }).finally(() => setIsLoading(false));
+            })
+            .finally(() => setIsLoading(false));
     };
 
-
     const onError = (err) => {
-        console.log(err, 'onError')
-        setError(err.errorMessage)
-    }
-
+        console.log(err, "onError");
+        setError(err.errorMessage);
+    };
 
     const Login = () => {
         if (passwordEnabled && password) {
-            client.signInWithPassword({
-                apiId: API_ID,
-                apiHash: API_HASH,
-            }, {
-                password: password,
-                onError: onError
-            }).then((res) => {
-                console.log(res, 'signInWithPassword');
-                client.session.save();
-                dispatch(authenticateUser());
-            }).catch((err) => {
-                console.log(err);
-                setError(err.errorMessage);
-            }).finally(() => setIsLoading(false));
+            client
+                .signInWithPassword(
+                    {
+                        apiId: API_ID,
+                        apiHash: API_HASH,
+                    },
+                    {
+                        password: password,
+                        onError: onError,
+                    },
+                )
+                .then((res) => {
+                    console.log(res, "signInWithPassword");
+                    client.session.save();
+                    dispatch(authenticateUser());
+                })
+                .catch((err) => {
+                    console.log(err);
+                    setError(err.errorMessage);
+                })
+                .finally(() => setIsLoading(false));
         } else {
             client
                 .invoke(
@@ -94,8 +101,8 @@ export default function Login() {
                 })
                 .catch((err) => {
                     console.log(err.errorMessage);
-                    if (err.errorMessage === 'SESSION_PASSWORD_NEEDED') {
-                        setPasswordEnabled(true)
+                    if (err.errorMessage === "SESSION_PASSWORD_NEEDED") {
+                        setPasswordEnabled(true);
                     } else {
                         setError(err.errorMessage);
                     }
@@ -171,22 +178,21 @@ export default function Login() {
                             />
                         </Grid>
                     )}
-                    {
-                        passwordEnabled && (
-                            <Grid item xs={12}>
-                                <TextField
-                                    required
-                                    label="2FA password"
-                                    variant="outlined"
-                                    fullWidth
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    error={error ? true : false}
-                                    helperText={error}
-                                />
-                            </Grid>
-                        )
-                    }
+                    {passwordEnabled && (
+                        <Grid item xs={12}>
+                            <TextField
+                                required
+                                label="2FA password"
+                                variant="outlined"
+                                type="password"
+                                fullWidth
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                error={error ? true : false}
+                                helperText={error}
+                            />
+                        </Grid>
+                    )}
                     <Grid item xs={12}>
                         <Button
                             variant="outlined"
@@ -199,10 +205,11 @@ export default function Login() {
                                 <CircularProgress size={24} />
                             ) : !phoneCodeHash ? (
                                 "Next"
-                            ) : !passwordEnabled ?
+                            ) : !passwordEnabled ? (
                                 "Verify"
-                                : "Login"
-                            }
+                            ) : (
+                                "Login"
+                            )}
                         </Button>
                     </Grid>
                 </Grid>
