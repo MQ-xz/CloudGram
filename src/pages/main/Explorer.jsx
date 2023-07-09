@@ -3,7 +3,6 @@ import { useIndexedDB } from "react-indexed-db-hook";
 import { useParams } from "react-router-dom";
 
 import { Grid, Typography, Container } from "@mui/material";
-import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 
 import Folder from "../../components/explorer/Folder";
 import File from "../../components/explorer/File";
