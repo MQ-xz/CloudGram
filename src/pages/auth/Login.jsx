@@ -17,17 +17,15 @@ import { API_ID, API_HASH } from "../../config/config";
 import { authenticateUser } from "../../redux/actions/authAction";
 
 export default function Login() {
-    /**
-     * @todo: add support fot 2FA enabled accounts
-     */
-
     const dispatch = useDispatch();
 
     const [isLoading, setIsLoading] = useState(false);
     const [phoneNumber, setPhoneNumber] = useState("");
     const [phoneCodeHash, setPhoneCodeHash] = useState("");
-    const [code, setCode] = useState("");
-    const [error, setError] = useState(null);
+    const [password, setPassword] = useState("");
+    const [passwordEnabled, setPasswordEnabled] = useState(null);
+    const [phoneCode, setPhoneCode] = useState("");
+    const [error, setError] = useState({});
 
     const sendCode = () => {
         client
@@ -50,36 +48,74 @@ export default function Login() {
             })
             .catch((err) => {
                 console.log(err.errorMessage);
-                setError(err.errorMessage);
+                setError({ ...error, phoneNumber: err.errorMessage });
             })
             .finally(() => setIsLoading(false));
+    };
+
+    const onError = (err) => {
+        console.log(err.errorMessage, "onError");
+        setError({ ...error, password: err.errorMessage });
+        return true;
+    };
+
+    const getPassword = () => {
+        return password;
     };
 
     const Login = () => {
-        client
-            .invoke(
-                new Api.auth.SignIn({
-                    phoneNumber: phoneNumber,
-                    phoneCodeHash: phoneCodeHash,
-                    phoneCode: code,
-                }),
-            )
-            .then((res) => {
-                console.log(res);
-                client.session.save();
-                dispatch(authenticateUser());
-            })
-            .catch((err) => {
-                console.log(err.errorMessage);
-                setError(err.errorMessage);
-            })
-            .finally(() => setIsLoading(false));
+        if (passwordEnabled && password) {
+            client
+                .signInWithPassword(
+                    {
+                        apiId: API_ID,
+                        apiHash: API_HASH,
+                    },
+                    {
+                        password: getPassword,
+                        onError: onError,
+                    },
+                )
+                .then((res) => {
+                    console.log(res, "signInWithPassword");
+                    client.session.save();
+                    dispatch(authenticateUser());
+                })
+                .catch((err) => {
+                    console.log(err);
+                    // setError(err.errorMessage);
+                })
+                .finally(() => setIsLoading(false));
+        } else {
+            client
+                .invoke(
+                    new Api.auth.SignIn({
+                        phoneNumber: phoneNumber,
+                        phoneCodeHash: phoneCodeHash,
+                        phoneCode: phoneCode,
+                    }),
+                )
+                .then((res) => {
+                    console.log(res);
+                    client.session.save();
+                    dispatch(authenticateUser());
+                })
+                .catch((err) => {
+                    console.log(err.errorMessage);
+                    if (err.errorMessage === "SESSION_PASSWORD_NEEDED") {
+                        setPasswordEnabled(true);
+                    } else {
+                        setError({ ...error, phoneCode: err.errorMessage });
+                    }
+                })
+                .finally(() => setIsLoading(false));
+        }
     };
 
     const handleLogin = () => {
-        setError(null);
+        setError({});
         setIsLoading(true);
-        if (phoneCodeHash && phoneNumber && code) Login();
+        if (phoneCodeHash && phoneNumber && phoneCode) Login();
         else if (phoneNumber) sendCode();
         else setIsLoading(false);
     };
@@ -125,8 +161,8 @@ export default function Login() {
                                 fullWidth
                                 value={phoneNumber}
                                 onChange={(e) => setPhoneNumber(e.target.value)}
-                                error={error ? true : false}
-                                helperText={error}
+                                error={error?.phoneNumber ? true : false}
+                                helperText={error?.phoneNumber}
                             />
                         </Grid>
                     ) : (
@@ -136,10 +172,25 @@ export default function Login() {
                                 label="OTP"
                                 variant="outlined"
                                 fullWidth
-                                value={code}
-                                onChange={(e) => setCode(e.target.value)}
-                                error={error ? true : false}
-                                helperText={error}
+                                value={phoneCode}
+                                onChange={(e) => setPhoneCode(e.target.value)}
+                                error={error?.phoneCode ? true : false}
+                                helperText={error?.phoneCode}
+                            />
+                        </Grid>
+                    )}
+                    {passwordEnabled && (
+                        <Grid item xs={12}>
+                            <TextField
+                                required
+                                label="2FA password"
+                                variant="outlined"
+                                type="password"
+                                fullWidth
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                error={error?.password ? true : false}
+                                helperText={error?.password}
                             />
                         </Grid>
                     )}
@@ -155,6 +206,8 @@ export default function Login() {
                                 <CircularProgress size={24} />
                             ) : !phoneCodeHash ? (
                                 "Next"
+                            ) : !passwordEnabled ? (
+                                "Verify"
                             ) : (
                                 "Login"
                             )}
