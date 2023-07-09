@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useIndexedDB } from "react-indexed-db-hook";
 import { useParams } from "react-router-dom";
 
-import Grid from "@mui/material/Grid";
+import { Grid, Typography, Container } from "@mui/material";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 
 import Folder from "../../components/explorer/Folder";
 import File from "../../components/explorer/File";
@@ -63,33 +64,42 @@ export default function Explorer() {
                 columnSpacing={{ xs: 0.5, sm: 7, md: 1 }}
                 m={0.5}
             >
-                {data?.map((item) => {
-                    switch (item.type) {
-                        case "folder":
-                            return (
-                                <Folder
-                                    key={item.id}
-                                    id={item.id}
-                                    name={item.name}
-                                    // deleteItem={deleteItem}
-                                    workDir={workDir}
-                                    setWorkDir={setWorkDir}
-                                />
-                            );
-                        case "file":
-                            return (
-                                <File
-                                    key={item.id}
-                                    id={item.id}
-                                    name={item.name}
-                                    file_id={item.file_id}
-                                    deleteItem={deleteItem}
-                                />
-                            );
-                        default:
-                            return null;
-                    }
-                })}
+                {data.length ? (
+                    data?.map((item) => {
+                        switch (item.type) {
+                            case "folder":
+                                return (
+                                    <Folder
+                                        key={item.id}
+                                        id={item.id}
+                                        name={item.name}
+                                        // deleteItem={deleteItem}
+                                        workDir={workDir}
+                                        setWorkDir={setWorkDir}
+                                    />
+                                );
+                            case "file":
+                                return (
+                                    <File
+                                        key={item.id}
+                                        id={item.id}
+                                        name={item.name}
+                                        file_id={item.file_id}
+                                        deleteItem={deleteItem}
+                                    />
+                                );
+                            default:
+                                return null;
+                        }
+                    })
+                ) : (
+                    <Container>
+                        <Typography variant="body" align="center" gutterBottom>
+                            There is nothing to show here, please upload some
+                            file or create some folders.
+                        </Typography>
+                    </Container>
+                )}
             </Grid>
             <CreateButton parentID={parentID} fetchData={fetchData} />
         </>
