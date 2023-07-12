@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
 import {
+    Avatar,
     Card,
     CardHeader,
     Grid,
@@ -11,7 +12,6 @@ import {
     MenuItem,
     Typography,
 } from "@mui/material";
-import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import FileUploadIcon from "@mui/icons-material/FileUpload";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
@@ -19,6 +19,7 @@ import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import client from "../../services/telegram";
 import ProgressCircle from "../ProgressCircle";
 import downloadFile from "../../utils/downloadFile";
+import getFileIcon from "../../utils/getFileIcon";
 
 // eslint-disable-next-line react-refresh/only-export-components
 function File(props) {
@@ -55,7 +56,7 @@ function File(props) {
         <Grid item key={id}>
             <Card>
                 <CardHeader
-                    avatar={<InsertDriveFileIcon />}
+                    avatar={<Avatar height="48" src={getFileIcon(name)} />}
                     action={
                         <IconButton onClick={handleClick}>
                             <MoreVertIcon />
