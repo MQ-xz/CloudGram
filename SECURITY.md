@@ -4,9 +4,9 @@
 
 Any Security issues in the latest version which is available at [main branch](https://github.com/MQ-xz/CloudGram) are supported.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| latest version in [main](https://github.com/MQ-xz/CloudGram)  | :white_check_mark: |
+| Version                                                      | Supported          |
+| ------------------------------------------------------------ | ------------------ |
+| latest version in [main](https://github.com/MQ-xz/CloudGram) | :white_check_mark: |
 
 ## Reporting a Vulnerability
 
