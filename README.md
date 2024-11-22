@@ -55,8 +55,5 @@ npm run dev
 -   For Contribution read [CONTRIBUTING.md](https://github.com/MQ-xz/CloudGram/blob/main/CONTRIBUTING.md).
 -   Use GitHub issues for opening bugs and feature requests
 
-## Contact
-
-If you have any questions, suggestions, or feedback, please feel free to contact us via out telegram group [https://t.me/CloudGramApp](https://t.me/CloudGramApp).
 
 Enjoy free and private cloud storage with CloudGram!
