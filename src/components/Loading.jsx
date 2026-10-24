@@ -1,9 +1,16 @@
-import { Box, CircularProgress } from "@mui/material";
+import { LoaderCircle } from "lucide-react";
 
 export default function Loading() {
     return (
-        <Box sx={{ display: "flex" }}>
-            <CircularProgress />
-        </Box>
+        <span
+            role="status"
+            className="inline-flex items-center gap-2 text-xs text-muted-foreground"
+        >
+            <LoaderCircle
+                className="size-4 animate-spin text-primary"
+                aria-hidden="true"
+            />
+            <span>Loading…</span>
+        </span>
     );
 }

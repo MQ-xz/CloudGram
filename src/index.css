@@ -1,0 +1,120 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--background);
+    --color-secondary: var(--surface);
+    --color-secondary-foreground: var(--foreground);
+    --color-muted: var(--surface);
+    --color-muted-foreground: var(--muted);
+    --color-accent: var(--surface);
+    --color-accent-foreground: var(--primary);
+    --color-destructive: var(--foreground);
+    --color-border: var(--border);
+    --color-input: var(--border);
+    --color-ring: var(--primary);
+    --font-sans:
+        "SFMono-Regular", "Cascadia Code", "Roboto Mono", Consolas,
+        "Liberation Mono", monospace;
+    --font-mono:
+        "SFMono-Regular", "Cascadia Code", "Roboto Mono", Consolas,
+        "Liberation Mono", monospace;
+    --radius-sm: 0;
+    --radius-md: 0;
+    --radius-lg: 0;
+    --radius-xl: 0;
+}
+
+:root {
+    color-scheme: dark;
+    --background: #090b0d;
+    --surface: #12161a;
+    --primary: #b6f23a;
+    --foreground: #f4f5f3;
+    --muted: #8b949e;
+    --border: #252b31;
+    --card: var(--background);
+    --popover: var(--surface);
+    --radius: 0;
+}
+
+@layer base {
+    * {
+        @apply border-border outline-ring/60;
+    }
+    body {
+        @apply m-0 bg-background font-mono text-foreground antialiased;
+        font-size: 16px;
+        line-height: 1.55;
+        text-rendering: optimizeLegibility;
+    }
+    ::selection {
+        background: var(--primary);
+        color: var(--background);
+    }
+    button,
+    a,
+    input {
+        -webkit-tap-highlight-color: transparent;
+    }
+    button:not(:disabled),
+    [role="menuitem"]:not([data-disabled]) {
+        cursor: pointer;
+    }
+    svg {
+        stroke-linecap: square;
+        stroke-linejoin: miter;
+    }
+}
+
+@layer components {
+    .engineering-grid::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background-image:
+            linear-gradient(rgba(37, 43, 49, 0.14) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(37, 43, 49, 0.14) 1px, transparent 1px);
+        background-size: 48px 48px;
+        mask-image: radial-gradient(ellipse at center, black, transparent 68%);
+        opacity: 0.22;
+        z-index: -1;
+    }
+    .eyebrow {
+        @apply text-[0.72rem] font-bold uppercase tracking-[0.14em] text-primary;
+    }
+    .text-link {
+        @apply text-muted-foreground underline decoration-border underline-offset-4 hover:text-primary focus-visible:text-primary focus-visible:outline-1 focus-visible:outline-offset-4;
+    }
+    .file-row {
+        @apply flex min-w-0 items-center gap-4 border-b px-0 py-6 transition-[padding,border-color] duration-180 hover:border-primary hover:px-3 focus-visible:border-primary focus-visible:outline-1;
+    }
+    .file-card {
+        @apply flex min-h-16 min-w-0 items-center gap-3 border p-3 transition-colors hover:border-primary focus-visible:border-primary focus-visible:outline-1;
+    }
+}
+
+@media (max-width: 640px) {
+    body {
+        font-size: 14px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

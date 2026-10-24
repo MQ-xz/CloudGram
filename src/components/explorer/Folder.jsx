@@ -1,53 +1,47 @@
-import PropTypes from "prop-types";
+import { ArrowUpRight, Folder as FolderIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-import { Card, CardHeader, Grid } from "@mui/material";
-import FolderOpenIcon from "@mui/icons-material/FolderOpen";
-import Typography from "@mui/material/Typography";
-
-function Folder(props) {
-    const { id, name, workDir, setWorkDir } = props;
+export default function Folder({
+    id,
+    name,
+    workDir,
+    setWorkDir,
+    view = "list",
+}) {
     const navigate = useNavigate();
-
-    /**
-     *
-     * @todo: folder delete
-     */
-
     function open() {
         setWorkDir([...workDir, { id, name }]);
         navigate(`/folder/${id}`);
     }
-
     return (
-        <Grid
-            item
-            // xs={2}
-            key={id}
-        >
-            <Card onClick={open}>
-                <CardHeader
-                    avatar={<FolderOpenIcon />}
-                    // action={
-                    //     <IconButton
-                    //         onClick={() => console.log('heh')}
-                    //     >
-                    //         <MoreVertIcon />
-                    //     </IconButton>
-                    // }
-                    title={<Typography noWrap>{name}</Typography>}
+        <li className={view === "grid" ? "max-w-full" : undefined}>
+            <button
+                type="button"
+                onClick={open}
+                className={`${view === "grid" ? "file-card h-full" : "file-row"} group w-full text-left`}
+            >
+                <FolderIcon
+                    className="size-5 shrink-0 text-primary"
+                    strokeWidth={1.5}
+                    aria-hidden="true"
                 />
-            </Card>
-        </Grid>
+                <span className="min-w-0 flex-1 truncate text-sm font-bold">
+                    {name}
+                </span>
+                <span
+                    className={
+                        view === "grid"
+                            ? "sr-only"
+                            : "hidden text-xs text-muted-foreground sm:block"
+                    }
+                >
+                    Folder
+                </span>
+                <ArrowUpRight
+                    className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary"
+                    aria-hidden="true"
+                />
+            </button>
+        </li>
     );
 }
-
-Folder.propTypes = {
-    id: PropTypes.string,
-    name: PropTypes.string,
-    // deleteItem: PropTypes.func,
-    workDir: PropTypes.array,
-    setWorkDir: PropTypes.func,
-};
-
-export default Folder;

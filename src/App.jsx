@@ -1,17 +1,12 @@
-import { PropTypes } from "prop-types";
 import { useEffect, useState } from "react";
 import { BrowserRouter } from "react-router-dom";
-import { initDB } from "react-indexed-db-hook";
 import { connect } from "react-redux";
 
 import { AuthRoutes, UnAuthRoutes } from "./AppRoutes";
 import client from "./services/telegram";
 import { authenticateUser } from "./redux/actions/authAction";
 
-// initDB
-import { DBConfig } from "./db/config";
 import SplashScreen from "./components/SplashScreen";
-initDB(DBConfig);
 
 // css
 // import './styles/app.css'
@@ -55,10 +50,4 @@ const mapStateToProps = (state) => {
     };
 };
 
-App.propTypes = {
-    dispatch: PropTypes.func.isRequired,
-    isAuthenticated: PropTypes.bool.isRequired,
-};
-
-// eslint-disable-next-line react-refresh/only-export-components
 export default connect(mapStateToProps)(App);

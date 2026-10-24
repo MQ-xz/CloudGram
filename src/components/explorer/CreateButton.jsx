@@ -1,54 +1,40 @@
-import { PropTypes } from "prop-types";
 import { useState } from "react";
-
-import { Box, SpeedDial, SpeedDialIcon, SpeedDialAction } from "@mui/material";
-import FolderOpenIcon from "@mui/icons-material/FolderOpen";
-import UploadFileIcon from "@mui/icons-material/UploadFile";
-
+import { Plus, FolderPlus, Upload } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+    DropdownMenu,
+    DropdownMenuTrigger,
+    DropdownMenuContent,
+    DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import CreateFolder from "./CreateFolder";
 import UploadFile from "./UploadFile";
 
-export default function CreateButton(props) {
-    const { parentID, fetchData } = props;
-
-    const [open, setOpen] = useState(false);
-    const handleOpen = () => setOpen(true);
-    const handleClose = () => setOpen(false);
-
+export default function CreateButton({ parentID, fetchData }) {
     const [openCreateFolder, setOpenCreateFolder] = useState(false);
     const [openUploadFile, setOpenUploadFile] = useState(false);
-
-    const onFolderClick = () => setOpenCreateFolder(true);
-    const onFileClick = () => setOpenUploadFile(true);
-
-    const actions = [
-        { icon: <UploadFileIcon />, name: "Upload File", onClick: onFileClick },
-        {
-            icon: <FolderOpenIcon />,
-            name: "New Folder",
-            onClick: onFolderClick,
-        },
-    ];
-
     return (
-        <Box sx={{ position: "absolute", bottom: 16, right: 16 }}>
-            <SpeedDial
-                ariaLabel="SpeedDial controlled open example"
-                sx={{ position: "absolute", bottom: 16, right: 16 }}
-                icon={<SpeedDialIcon />}
-                onClose={handleClose}
-                onOpen={handleOpen}
-                open={open}
-            >
-                {actions.map((action) => (
-                    <SpeedDialAction
-                        key={action.name}
-                        icon={action.icon}
-                        tooltipTitle={action.name}
-                        onClick={action.onClick}
-                    />
-                ))}
-            </SpeedDial>
+        <>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button size="sm">
+                        <Plus aria-hidden="true" />
+                        New
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => setOpenUploadFile(true)}>
+                        <Upload aria-hidden="true" />
+                        Upload file
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                        onSelect={() => setOpenCreateFolder(true)}
+                    >
+                        <FolderPlus aria-hidden="true" />
+                        New folder
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
             <CreateFolder
                 parentID={parentID}
                 fetchData={fetchData}
@@ -61,11 +47,6 @@ export default function CreateButton(props) {
                 open={openUploadFile}
                 setOpen={setOpenUploadFile}
             />
-        </Box>
+        </>
     );
 }
-
-CreateButton.propTypes = {
-    parentID: PropTypes.string,
-    fetchData: PropTypes.func,
-};

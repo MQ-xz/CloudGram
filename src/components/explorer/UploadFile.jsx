@@ -1,104 +1,169 @@
-import { PropTypes } from "prop-types";
+import { useState } from "react";
+import { useSelector } from "react-redux";
 import { v4 as uuid4 } from "uuid";
-import { useIndexedDB } from "react-indexed-db-hook";
-
-import { Box, Button, Typography, Modal, Stack } from "@mui/material";
-
+import { Upload, FileUp, LoaderCircle } from "lucide-react";
+import { db } from "../../db/config";
 import uploadFile from "../../utils/uploadFile";
-
-const style = {
-    position: "absolute",
-    top: "50%",
-    left: "50%",
-    transform: "translate(-50%, -50%)",
-    width: 400,
-    bgcolor: "background.paper",
-    border: "2px solid #000",
-    boxShadow: 24,
-    p: 4,
-};
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog";
 
 export default function UploadFile({ parentID, fetchData, open, setOpen }) {
-    const { add, update } = useIndexedDB("file");
+    const [error, setError] = useState("");
+    const [file, setFile] = useState(null);
+    const [pendingUpload, setPendingUpload] = useState(null);
+    const [isUploading, setIsUploading] = useState(false);
+    const percentage = useSelector(
+        (state) =>
+            state.progress.activeProgress.find(
+                (item) => item.id === pendingUpload?.id,
+            )?.percentage ?? 0,
+    );
 
-    const handleClose = () => setOpen(false);
-
-    function handlerUploadFile(file) {
-        console.log("handlerUploadFile");
-        let data = {
+    async function handleUpload(event) {
+        event.preventDefault();
+        if (isUploading || !file) return;
+        let data = pendingUpload ?? {
             id: uuid4(),
             name: file.name,
             type: "file",
+            ...(parentID ? { parent: parentID } : {}),
         };
-        if (parentID) data["parent"] = parentID;
-        add(data)
-            .then((e) => {
-                console.log(e);
-            })
-            .catch((e) => {
-                console.log(e);
-            });
-        uploadFile(data.id, file)
-            .then((res) => {
-                console.log(res, "handlerUploadFile");
-                update({ ...data, file_id: res.id })
-                    .then((e) => {
-                        console.log(e);
-                    })
-                    .catch((e) => {
-                        console.log(e);
-                    });
-            })
-            .catch((e) => {
-                console.log(e);
-            });
-        fetchData();
+        setPendingUpload(data);
+        setIsUploading(true);
+        setError("");
+        try {
+            if (!data.file_id) {
+                const result = await uploadFile(data.id, file);
+                if (!result?.id) throw new Error("Missing Telegram message ID");
+                data = { ...data, file_id: result.id };
+                setPendingUpload(data);
+            }
+            await (await db).put("file", data);
+            await fetchData();
+            setFile(null);
+            setPendingUpload(null);
+            setOpen(false);
+        } catch {
+            setError(
+                data.file_id
+                    ? "Your file was uploaded to Telegram, but its information couldn't be saved. Retry saving to finish without uploading it again."
+                    : "Couldn't upload the file. Retry the upload or choose another file.",
+            );
+        } finally {
+            setIsUploading(false);
+        }
     }
-
     return (
-        <div>
-            <Modal
-                open={open}
-                onClose={handleClose}
-                aria-labelledby="modal-modal-title"
-                aria-describedby="modal-modal-description"
-            >
-                <Box sx={style}>
-                    <Typography
-                        id="modal-modal-title"
-                        variant="h6"
-                        component="h2"
-                    >
-                        Upload File
-                    </Typography>
-                    <form
-                        onSubmit={(e) => {
-                            e.preventDefault();
-                            handlerUploadFile(e.target.file.files[0]);
-                            handleClose();
-                        }}
-                    >
-                        <Stack spacing={2}>
-                            <input
-                                id="file"
-                                type="file"
-                                name="file"
-                                placeholder="Upload File"
+        <Dialog
+            open={open}
+            onOpenChange={(next) => {
+                if (isUploading) return;
+                setOpen(next);
+                setError("");
+            }}
+        >
+            <DialogContent showCloseButton={!isUploading}>
+                <DialogHeader>
+                    <p className="eyebrow mb-2">02 / Store</p>
+                    <DialogTitle>A place for your files.</DialogTitle>
+                    <DialogDescription>
+                        Upload a file to your Telegram Saved Messages.
+                    </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleUpload} className="space-y-6">
+                    <div className="space-y-4 border border-dashed bg-secondary/40 p-5">
+                        <FileUp
+                            className="size-6 text-primary"
+                            strokeWidth={1.5}
+                            aria-hidden="true"
+                        />
+                        <Label htmlFor="upload-file">Choose a file</Label>
+                        <Input
+                            id="upload-file"
+                            name="file"
+                            type="file"
+                            required={!file}
+                            disabled={
+                                isUploading || Boolean(pendingUpload?.file_id)
+                            }
+                            onChange={(event) => {
+                                setFile(event.target.files[0] ?? null);
+                                setPendingUpload(null);
+                                setError("");
+                            }}
+                            className="h-auto min-h-11 py-2 file:mr-3 file:font-mono file:text-xs"
+                        />
+                        {file && (
+                            <p className="break-all text-xs">
+                                Selected: {file.name}
+                            </p>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                            Your file stays in your own Telegram account. Folder
+                            information is saved in this browser.
+                        </p>
+                    </div>
+                    {isUploading && (
+                        <div className="space-y-2">
+                            <p
+                                role="status"
+                                className="text-xs text-muted-foreground"
+                            >
+                                {pendingUpload?.file_id
+                                    ? "Saving file information…"
+                                    : `Uploading… ${Math.round(percentage)}%`}
+                            </p>
+                            <Progress
+                                value={
+                                    pendingUpload?.file_id ? 100 : percentage
+                                }
+                                aria-label="Upload progress"
                             />
-                            <Button type="submit" variant="outlined">
-                                Upload
-                            </Button>
-                        </Stack>
-                    </form>
-                </Box>
-            </Modal>
-        </div>
+                        </div>
+                    )}
+                    {error && (
+                        <p role="alert" className="text-sm">
+                            {error}
+                        </p>
+                    )}
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            disabled={isUploading}
+                            onClick={() => setOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button type="submit" disabled={isUploading || !file}>
+                            {isUploading ? (
+                                <LoaderCircle className="animate-spin" />
+                            ) : (
+                                <Upload />
+                            )}
+                            {isUploading
+                                ? pendingUpload?.file_id
+                                    ? "Saving…"
+                                    : "Uploading…"
+                                : pendingUpload?.file_id
+                                  ? "Retry saving"
+                                  : error
+                                    ? "Retry upload"
+                                    : "Upload file"}
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
     );
 }
-
-UploadFile.propTypes = {
-    parentID: PropTypes.string,
-    fetchData: PropTypes.func,
-    open: PropTypes.bool,
-    setOpen: PropTypes.func,
-};

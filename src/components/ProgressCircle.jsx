@@ -1,35 +1,17 @@
-import PropTypes from "prop-types";
+import { Progress } from "@/components/ui/progress";
 
-import { Box, CircularProgress, Typography } from "@mui/material";
-
-export default function ProgressCircle(props) {
+export default function ProgressCircle({ value }) {
+    const percentage = Math.min(100, Math.max(0, Math.round(value || 0)));
     return (
-        <Box sx={{ position: "relative", display: "inline-flex" }}>
-            <CircularProgress variant="determinate" {...props} />
-            <Box
-                sx={{
-                    top: 0,
-                    left: 0,
-                    bottom: 0,
-                    right: 0,
-                    position: "absolute",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                }}
-            >
-                <Typography
-                    variant="caption"
-                    component="div"
-                    color="text.secondary"
-                >
-                    {`${Math.round(props.value)}%`}
-                </Typography>
-            </Box>
-        </Box>
+        <div className="flex w-28 items-center gap-3">
+            <Progress
+                value={percentage}
+                aria-label="Transfer progress"
+                className="h-1"
+            />
+            <span className="text-[0.65rem] tabular-nums text-muted-foreground">
+                {percentage}%
+            </span>
+        </div>
     );
 }
-
-ProgressCircle.propTypes = {
-    value: PropTypes.number.isRequired,
-};
