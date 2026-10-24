@@ -8,6 +8,10 @@ const require = createRequire(import.meta.url);
 
 // https://vitejs.dev/config/
 export default defineConfig({
+    test: {
+        environment: "jsdom",
+        setupFiles: ["./src/test/setup.js"],
+    },
     plugins: [react(), tailwindcss()],
     resolve: {
         alias: {
