@@ -8,26 +8,30 @@ import {
 } from "../redux/actions/progressAction";
 
 export default async function uploadFile(id, file) {
-    const toUpload = new CustomFile(
-        file.name,
-        file.size,
-        "",
-        file.arrayBuffer(),
-    );
+    Store.dispatch(uploadProgress(id, 0));
+    try {
+        const toUpload = new CustomFile(
+            file.name,
+            file.size,
+            "",
+            file.arrayBuffer(),
+        );
 
-    function progressCallback(progress) {
-        let _progress = progress * 100;
-        Store.dispatch(uploadProgress(id, _progress));
+        function progressCallback(progress) {
+            let _progress = progress * 100;
+            Store.dispatch(uploadProgress(id, _progress));
+        }
+
+        const result = await client.sendFile("me", {
+            file: toUpload,
+            workers: 1,
+            forceDocument: true,
+            progressCallback,
+        });
+
+        console.log(result); // prints the result
+        return result;
+    } finally {
+        Store.dispatch(completedProgress(id));
     }
-
-    const result = await client.sendFile("me", {
-        file: toUpload,
-        workers: 1,
-        forceDocument: true,
-        progressCallback,
-    });
-
-    console.log(result); // prints the result
-    Store.dispatch(completedProgress(id));
-    return result;
 }
