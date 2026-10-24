@@ -7,7 +7,6 @@ export function uploadProgress(id, percentage) {
 }
 
 export function downloadProgress(id, percentage) {
-    if (percentage >= 100) return completedProgress(id);
     return {
         id: id,
         percentage: percentage,

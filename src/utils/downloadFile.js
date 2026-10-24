@@ -5,32 +5,51 @@ import {
 } from "../redux/actions/progressAction";
 import { Store } from "../redux/store";
 
-export default async function downloadFile(id, file_id) {
-    const message = await client.getMessages("me", { ids: file_id });
-    const media = message[0].media;
+export default async function downloadFile(id, file_id, name) {
+    let url;
+    let link;
+    Store.dispatch(downloadProgress(id, 0));
+    try {
+        if (!file_id) {
+            throw new Error(
+                "This file has no Telegram message reference. Please upload it again.",
+            );
+        }
+        const message = await client.getMessages("me", { ids: file_id });
+        const media = message?.[0]?.media;
+        if (!media?.document) {
+            throw new Error(
+                "This file is no longer available in Telegram Saved Messages. Check whether it was deleted.",
+            );
+        }
 
-    if (media) {
         // for progress loading
-        Store.dispatch(downloadProgress(id, 0));
-        const fileSize = Number(media.document.size.value);
+        const fileSize = Number(media.document.size);
 
         const progressCallback = (downloaded) => {
-            const _downloaded = Number(downloaded.value);
-            const progress = (_downloaded / fileSize) * 100;
+            const progress =
+                fileSize > 0 ? (Number(downloaded) / fileSize) * 100 : 0;
             Store.dispatch(downloadProgress(id, progress));
         };
 
         const file = await client.downloadMedia(media, { progressCallback });
+        if (file == null) {
+            throw new Error(
+                "Telegram returned no file data. Please try downloading it again.",
+            );
+        }
 
         //invoke download on browser
         var blob = new Blob([file], { type: media.document.mimeType });
-        var url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
+        url = URL.createObjectURL(blob);
+        link = document.createElement("a");
         link.href = url;
         link.download = name;
+        document.body.appendChild(link);
         link.click();
-        URL.revokeObjectURL(url);
-        link.remove();
+    } finally {
+        link?.remove();
+        if (url) URL.revokeObjectURL(url);
 
         //update completed
         Store.dispatch(completedProgress(id));
