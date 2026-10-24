@@ -24,7 +24,7 @@ export function AuthRoutes() {
 export function UnAuthRoutes() {
     return (
         <Routes>
-            <Route path="/" element={<Login />} />
+            <Route path="*" element={<Login />} />
         </Routes>
     );
 }
