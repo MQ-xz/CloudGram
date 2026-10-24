@@ -1,33 +1,40 @@
-name: Dependency Audit SARIF Test
+name: Dependency Audit
 
 on:
-  workflow_dispatch:
+    push:
+        branches: [main]
+    pull_request:
+    schedule:
+        - cron: "0 3 * * 1"
+    workflow_dispatch:
 
 permissions:
-  contents: read
-  security-events: write
+    contents: read
+    security-events: write
 
 jobs:
-  audit:
-    runs-on: self-hosted
+    audit:
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
 
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        steps:
+            - name: Check out repository
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Generate Trivy SARIF report
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          scan-type: fs
-          scan-ref: .
-          format: sarif
-          output: trivy-results.sarif
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: '0'
+            - name: Generate Trivy SARIF report
+              uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+              with:
+                  scan-type: fs
+                  scan-ref: .
+                  format: sarif
+                  output: trivy-results.sarif
+                  severity: HIGH,CRITICAL
+                  ignore-unfixed: false
+                  exit-code: "1"
 
-      - name: Upload SARIF to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4
-        with:
-          sarif_file: trivy-results.sarif
-          category: trivy-dependency-audit
+            - name: Upload SARIF to GitHub Code Scanning
+              if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+              uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4
+              with:
+                  sarif_file: trivy-results.sarif
+                  category: trivy-dependency-audit

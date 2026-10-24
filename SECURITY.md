@@ -27,8 +27,8 @@ GitHub makes this reporting option available when private vulnerability reportin
 
 If GitHub private reporting is unavailable or you cannot use it, use one of the existing contact methods:
 
--   Email: [kmahshooq@gmail.com](mailto:kmahshooq@gmail.com), with the subject `CloudGram security report: <short description>`.
--   Telegram: [@MQ_XZ](https://t.me/MQ_XZ).
+- Email: [kmahshooq@gmail.com](mailto:kmahshooq@gmail.com), with the subject `CloudGram security report: <short description>`.
+- Telegram: [@MQ_XZ](https://t.me/MQ_XZ).
 
 GitHub private reporting is the preferred channel; email and Telegram are fallback options.
 
@@ -36,14 +36,14 @@ GitHub private reporting is the preferred channel; email and Telegram are fallba
 
 Include as much of the following as you can. You can submit an initial report even if some details are unavailable.
 
--   A short summary and the affected feature or component.
--   The affected commit or version, browser, operating system, and relevant configuration.
--   Whether you reproduced the issue locally or on a deployed instance.
--   Required conditions, such as authentication, account access, or user interaction.
--   Clear reproduction steps and a minimal proof of concept, if available.
--   Expected behavior, observed behavior, and the security impact.
--   Relevant logs or screenshots with sensitive information removed.
--   Any suggested mitigation or fix, if you have one.
+- A short summary and the affected feature or component.
+- The affected commit or version, browser, operating system, and relevant configuration.
+- Whether you reproduced the issue locally or on a deployed instance.
+- Required conditions, such as authentication, account access, or user interaction.
+- Clear reproduction steps and a minimal proof of concept, if available.
+- Expected behavior, observed behavior, and the security impact.
+- Relevant logs or screenshots with sensitive information removed.
+- Any suggested mitigation or fix, if you have one.
 
 For dependency findings, include the package name, installed version, advisory link, and any evidence showing how CloudGram is affected. Clearly distinguish reproduced behavior from suspected impact.
 
@@ -59,10 +59,10 @@ Mention whether you would like public credit, the name or handle to use, or whet
 
 ## Responsible Research
 
--   Prefer a local development instance and use only accounts, files, and systems you own or have permission to test.
--   Use the minimum actions and data needed to demonstrate the issue.
--   Avoid disrupting services, accessing other users' information, or modifying or deleting their data.
--   If you encounter private information unexpectedly, stop accessing it and describe the exposure without copying or sharing the information.
--   Report vulnerabilities in Telegram or another dependency that are independent of CloudGram to the relevant project's security team. Include the CloudGram impact here when applicable.
+- Prefer a local development instance and use only accounts, files, and systems you own or have permission to test.
+- Use the minimum actions and data needed to demonstrate the issue.
+- Avoid disrupting services, accessing other users' information, or modifying or deleting their data.
+- If you encounter private information unexpectedly, stop accessing it and describe the exposure without copying or sharing the information.
+- Report vulnerabilities in Telegram or another dependency that are independent of CloudGram to the relevant project's security team. Include the CloudGram impact here when applicable.
 
 Thank you for helping improve CloudGram's security.
