@@ -355,8 +355,10 @@ export default function Login() {
                             className="mt-0.5 size-3.5 shrink-0"
                             aria-hidden="true"
                         />
-                        Your Telegram session is saved in this browser. Use a
-                        device you trust.
+                        Your Telegram session is saved in this browser and
+                        grants access to your account. Use a device and
+                        CloudGram deployment you trust. Files use Telegram cloud
+                        storage; CloudGram adds no end-to-end encryption.
                     </p>
                 </section>
             </main>
