@@ -27,6 +27,7 @@ export default function CreateFolder({ parentID, fetchData, open, setOpen }) {
             id: uuid4(),
             name: new FormData(event.currentTarget).get("name"),
             type: "folder",
+            createdAt: new Date().toISOString(),
         };
         if (parentID) data.parent = parentID;
         try {

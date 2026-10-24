@@ -95,7 +95,7 @@
         @apply text-muted-foreground underline decoration-border underline-offset-4 hover:text-primary focus-visible:text-primary focus-visible:outline-1 focus-visible:outline-offset-4;
     }
     .file-row {
-        @apply flex min-w-0 items-center gap-4 border-b px-0 py-6 transition-[padding,border-color] duration-180 hover:border-primary hover:px-3 focus-visible:border-primary focus-visible:outline-1;
+        @apply flex min-w-0 items-center gap-4 border-b px-0 py-4 transition-[padding,border-color] duration-180 hover:border-primary hover:px-3 focus-visible:border-primary focus-visible:outline-1;
     }
     .file-card {
         @apply flex min-h-16 min-w-0 items-center gap-3 border p-3 transition-colors hover:border-primary focus-visible:border-primary focus-visible:outline-1;

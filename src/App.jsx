@@ -1,9 +1,6 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { BrowserRouter } from "react-router-dom";
 import { connect } from "react-redux";
-import { Api } from "telegram";
-
-import { AuthRoutes, UnAuthRoutes } from "./AppRoutes";
 import { initializeClient } from "./services/telegram";
 import {
     authenticateAccount,
@@ -13,10 +10,16 @@ import {
 
 import SplashScreen from "./components/SplashScreen";
 
+const AuthRoutes = lazy(() =>
+    import("./AppRoutes").then((routes) => ({ default: routes.AuthRoutes })),
+);
+const UnAuthRoutes = lazy(() =>
+    import("./AppRoutes").then((routes) => ({ default: routes.UnAuthRoutes })),
+);
+
 // css
 // import './styles/app.css'
 
-// eslint-disable-next-line react-refresh/only-export-components
 function App(props) {
     const { dispatch, isAuthenticated } = props;
     const [isLoading, setIsLoading] = useState(true);
@@ -29,10 +32,11 @@ function App(props) {
         async function checkAuth() {
             let client;
             try {
-                client = initializeClient();
+                client = await initializeClient();
                 await client.connect();
                 if (!client.connected) throw new Error("Telegram is offline");
                 try {
+                    const { Api } = await import("telegram");
                     await client.invoke(new Api.updates.GetState());
                     if (!cancelled) await authenticateAccount();
                 } catch (error) {
@@ -77,13 +81,18 @@ function App(props) {
     return (
         <>
             <BrowserRouter>
-                {isLoading || startupError ? (
-                    <SplashScreen error={startupError} onRetry={retryStartup} />
-                ) : isAuthenticated ? (
-                    <AuthRoutes />
-                ) : (
-                    <UnAuthRoutes />
-                )}
+                <Suspense fallback={<SplashScreen />}>
+                    {isLoading || startupError ? (
+                        <SplashScreen
+                            error={startupError}
+                            onRetry={retryStartup}
+                        />
+                    ) : isAuthenticated ? (
+                        <AuthRoutes />
+                    ) : (
+                        <UnAuthRoutes />
+                    )}
+                </Suspense>
             </BrowserRouter>
         </>
     );

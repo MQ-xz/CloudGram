@@ -1,47 +1,38 @@
 import { ArrowUpRight, Folder as FolderIcon } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+import ManageFolder from "./ManageFolder";
+import { formatDate } from "../../utils/formatFile";
 
-export default function Folder({
-    id,
-    name,
-    workDir,
-    setWorkDir,
-    view = "list",
-}) {
-    const navigate = useNavigate();
-    function open() {
-        setWorkDir([...workDir, { id, name }]);
-        navigate(`/folder/${id}`);
-    }
+export default function Folder({ folder, fetchData, view = "list" }) {
     return (
-        <li className={view === "grid" ? "max-w-full" : undefined}>
-            <button
-                type="button"
-                onClick={open}
-                className={`${view === "grid" ? "file-card h-full" : "file-row"} group w-full text-left`}
+        <li className={view === "grid" ? "file-card max-w-full" : "file-row"}>
+            <Link
+                to={`/folder/${folder.id}`}
+                aria-label={`Open folder ${folder.name}`}
+                className="flex min-w-0 flex-1 items-center gap-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
                 <FolderIcon
                     className="size-5 shrink-0 text-primary"
                     strokeWidth={1.5}
                     aria-hidden="true"
                 />
-                <span className="min-w-0 flex-1 truncate text-sm font-bold">
-                    {name}
-                </span>
-                <span
-                    className={
-                        view === "grid"
-                            ? "sr-only"
-                            : "hidden text-xs text-muted-foreground sm:block"
-                    }
-                >
-                    Folder
-                </span>
+                <div className="min-w-0 flex-1">
+                    <p
+                        className="truncate text-sm font-bold"
+                        title={folder.name}
+                    >
+                        {folder.name}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                        Folder · {formatDate(folder.createdAt)}
+                    </p>
+                </div>
                 <ArrowUpRight
-                    className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary"
+                    className="size-4 shrink-0 text-muted-foreground"
                     aria-hidden="true"
                 />
-            </button>
+            </Link>
+            <ManageFolder folder={folder} fetchData={fetchData} />
         </li>
     );
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import {
     MoreHorizontal,
@@ -19,27 +19,52 @@ import client from "../../services/telegram";
 import ProgressCircle from "../ProgressCircle";
 import downloadFile from "../../utils/downloadFile";
 import getFileIcon from "../../utils/getFileIcon";
+import { formatSize, formatDate } from "../../utils/formatFile";
 
-export default function File({ id, name, file_id, deleteItem, view = "list" }) {
+export default function File({
+    id,
+    name,
+    file_id,
+    deleteItem,
+    size,
+    createdAt,
+    view = "list",
+}) {
     const activeProgress = useSelector((state) =>
         state.progress.activeProgress.find((item) => item.id === id),
     );
     const [error, setError] = useState("");
+    const [notice, setNotice] = useState("");
+    const controller = useRef(null);
+    useEffect(() => () => controller.current?.abort(), []);
     const statusMessage =
         error ||
+        notice ||
         (!file_id && !activeProgress
             ? "This upload has no Telegram file reference. Upload the file again to download it."
             : "");
     const Icon = getFileIcon(name);
     async function handleDownload() {
+        if (controller.current) return;
         setError("");
+        setNotice("");
+        const abort = new AbortController();
+        controller.current = abort;
         try {
-            await downloadFile(id, file_id, name);
+            await downloadFile(id, file_id, name, {
+                signal: abort.signal,
+                size,
+            });
         } catch (err) {
-            setError(
-                err?.message ||
-                    "Download failed. Check your connection and try again.",
-            );
+            if (abort.signal.aborted || err?.name === "AbortError")
+                setNotice("Download cancelled.");
+            else
+                setError(
+                    err?.message ||
+                        "Download failed. Check your connection and try again.",
+                );
+        } finally {
+            controller.current = null;
         }
     }
     async function handleDelete() {
@@ -63,6 +88,9 @@ export default function File({ id, name, file_id, deleteItem, view = "list" }) {
             <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-bold" title={name}>
                     {name}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                    {formatSize(size)} · {formatDate(createdAt)}
                 </p>
                 {statusMessage && (
                     <p
@@ -98,6 +126,22 @@ export default function File({ id, name, file_id, deleteItem, view = "list" }) {
             >
                 File
             </span>
+            {activeProgress?.type === "DOWNLOADING" && (
+                <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={notice === "Cancelling download…"}
+                    onClick={() => {
+                        setNotice("Cancelling download…");
+                        controller.current?.abort();
+                    }}
+                    aria-label={`Cancel download of ${name}`}
+                >
+                    {notice === "Cancelling download…"
+                        ? "Cancelling…"
+                        : "Cancel"}
+                </Button>
+            )}
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button

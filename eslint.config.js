@@ -22,7 +22,7 @@ export default [
             "react-hooks/exhaustive-deps": "warn",
             "react-refresh/only-export-components": [
                 "warn",
-                { allowConstantExport: true },
+                { allowConstantExport: true, extraHOCs: ["connect"] },
             ],
         },
     },

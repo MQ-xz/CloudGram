@@ -1,5 +1,4 @@
 import { Buffer } from "buffer";
-import { CustomFile } from "telegram/client/uploads";
 import { db, databaseBlocked, databaseUpgradeMessage } from "../db/config";
 import client from "./telegram";
 
@@ -48,7 +47,14 @@ function catalogRecords(records) {
             id: item.id,
             name: item.name,
             type: item.type,
-            ...(item.parent != null ? { parent: item.parent } : {}),
+            ...(item.parent ? { parent: item.parent } : {}),
+            ...(Number.isSafeInteger(item.size) && item.size >= 0
+                ? { size: item.size }
+                : {}),
+            ...(typeof item.createdAt === "string" &&
+            Number.isFinite(Date.parse(item.createdAt))
+                ? { createdAt: item.createdAt }
+                : {}),
             ...(item.type === "file" && item.file_id != null
                 ? { file_id: item.file_id }
                 : {}),
@@ -64,7 +70,7 @@ function catalogRecords(records) {
             if (path.has(current.id))
                 throw new Error("Circular folder structure.");
             path.add(current.id);
-            if (current.parent != null) {
+            if (current.parent) {
                 const parent = byId.get(current.parent);
                 if (parent?.type !== "folder") {
                     throw new Error("Missing parent folder.");
@@ -241,6 +247,8 @@ export function runBackup(keepLocal = false) {
         if (bytes.length > maxBytes)
             throw new Error("Catalog backup is too large.");
         publish({ status: "uploading" });
+        const { CustomFile } = await import("telegram/client/uploads");
+        if (!active || paused || generation !== currentGeneration) return;
         const result = await telegram.sendFile("me", {
             file: new CustomFile(filename, bytes.length, "", bytes),
             caption: `${marker} v1`,
@@ -327,7 +335,9 @@ export function restoreCatalog(messageId) {
         try {
             await transaction.objectStore("file").clear();
             for (const record of records)
-                await transaction.objectStore("file").put(record);
+                await transaction
+                    .objectStore("file")
+                    .put({ ...record, parent: record.parent ?? "" });
             await store.put({
                 ...current,
                 revision: current.revision + 1,

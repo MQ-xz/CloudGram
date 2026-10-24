@@ -1,12 +1,6 @@
 export default function reducer(
     state = {
-        activeProgress: [
-            {
-                id: 0,
-                type: "UPLOADING",
-                percentage: 0,
-            },
-        ],
+        activeProgress: [],
     },
     action,
 ) {

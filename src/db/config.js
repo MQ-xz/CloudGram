@@ -6,7 +6,7 @@ export const databaseUpgradeMessage =
 
 export const DBConfig = {
     name: "CloudGram",
-    version: 2,
+    version: 3,
     objectStoresMeta: [
         {
             store: "file",
@@ -36,7 +36,7 @@ function openCatalog(name) {
             databaseBlocked = true;
             window.dispatchEvent(new Event("cloudgram:storage-blocked"));
         },
-        upgrade(database) {
+        async upgrade(database, _, __, transaction) {
             for (const {
                 store,
                 storeConfig,
@@ -53,6 +53,12 @@ function openCatalog(name) {
             }
             if (!database.objectStoreNames.contains("catalogBackup")) {
                 database.createObjectStore("catalogBackup", { keyPath: "id" });
+            }
+            let cursor = await transaction.objectStore("file").openCursor();
+            while (cursor) {
+                if (cursor.value.parent == null)
+                    await cursor.update({ ...cursor.value, parent: "" });
+                cursor = await cursor.continue();
             }
         },
         blocking(_, __, event) {
@@ -100,7 +106,9 @@ async function copyLegacyCatalog(legacy, database, accountId) {
         if (await transaction.objectStore("file").count())
             throw new Error("Import requires an empty catalog.");
         for (const record of records)
-            await transaction.objectStore("file").put(record);
+            await transaction
+                .objectStore("file")
+                .put({ ...record, parent: record.parent ?? "" });
         await transaction.objectStore("catalogBackup").put({
             ...metadata,
             id: "state",
@@ -161,7 +169,7 @@ export function releaseCatalog() {
     previous?.then((database) => database.close());
 }
 
-export async function writeCatalog(method, value, accountId) {
+async function changeCatalog(accountId, change) {
     if (!accountId || accountId !== activeAccountId)
         throw new Error("Account changed. Please sign in again.");
     const database = await db;
@@ -176,7 +184,7 @@ export async function writeCatalog(method, value, accountId) {
     try {
         if (state.accountId && state.accountId !== accountId)
             throw new Error("Catalog account mismatch.");
-        await transaction.objectStore("file")[method](value);
+        await change(transaction.objectStore("file"), state);
         await metadata.put({
             ...state,
             accountId,
@@ -195,4 +203,129 @@ export async function writeCatalog(method, value, accountId) {
         channel.postMessage("changed");
         channel.close();
     }
+}
+
+export function writeCatalog(method, value, accountId) {
+    return changeCatalog(accountId, async (store) => {
+        if (method === "delete") {
+            await store.delete(value);
+            return;
+        }
+        const item = { ...value, parent: value.parent ?? "" };
+        if (item.parent && (await store.get(item.parent))?.type !== "folder")
+            throw new Error("The destination folder no longer exists.");
+        await store[method](item);
+    });
+}
+
+export async function readDirectory(parentID, accountId) {
+    if (accountId !== activeAccountId) throw new Error("Account changed.");
+    const transaction = (await db).transaction("file");
+    const store = transaction.store;
+    const ancestors = [];
+    const visited = new Set();
+    let id = parentID;
+    while (id) {
+        if (visited.has(id))
+            throw new Error("The folder hierarchy is invalid.");
+        visited.add(id);
+        const folder = await store.get(id);
+        if (folder?.type !== "folder")
+            throw new Error("This folder no longer exists.");
+        ancestors.unshift(folder);
+        id = folder.parent;
+    }
+    const records = await store.index("parent").getAll(parentID ?? "");
+    await transaction.done;
+    return { path: [{ id: undefined, name: "Home" }, ...ancestors], records };
+}
+
+export function updateFolder(id, changes, accountId) {
+    return changeCatalog(accountId, async (store) => {
+        const folder = await store.get(id);
+        if (folder?.type !== "folder")
+            throw new Error("This folder no longer exists.");
+        const name =
+            changes.name === undefined ? folder.name : changes.name.trim();
+        if (!name) throw new Error("Enter a folder name.");
+        const parent =
+            changes.parent === undefined
+                ? folder.parent
+                : (changes.parent ?? "");
+        const visited = new Set([id]);
+        let ancestor = parent;
+        while (ancestor) {
+            if (visited.has(ancestor))
+                throw new Error(
+                    "A folder cannot be moved into itself or its children.",
+                );
+            visited.add(ancestor);
+            const target = await store.get(ancestor);
+            if (target?.type !== "folder")
+                throw new Error("The destination folder no longer exists.");
+            ancestor = target.parent;
+        }
+        await store.put({ ...folder, name, parent });
+    });
+}
+
+async function folderTree(store, id) {
+    const folder = await store.get(id);
+    if (folder?.type !== "folder")
+        throw new Error("This folder no longer exists.");
+    const records = [folder];
+    const visited = new Set([id]);
+    for (let index = 0; index < records.length; index++) {
+        if (records[index].type !== "folder") continue;
+        for (const child of await store
+            .index("parent")
+            .getAll(records[index].id)) {
+            if (visited.has(child.id))
+                throw new Error("The folder hierarchy is invalid.");
+            visited.add(child.id);
+            records.push(child);
+        }
+    }
+    return records;
+}
+
+export async function reviewFolderDeletion(id, accountId) {
+    if (accountId !== activeAccountId) throw new Error("Account changed.");
+    const transaction = (await db).transaction(["file", "catalogBackup"]);
+    const records = await folderTree(transaction.objectStore("file"), id);
+    const metadata = await transaction
+        .objectStore("catalogBackup")
+        .get("state");
+    await transaction.done;
+    return { records, revision: metadata?.revision ?? 0 };
+}
+
+export function deleteFolderTree(id, revision, accountId) {
+    return changeCatalog(accountId, async (store, metadata) => {
+        if (metadata.revision !== revision)
+            throw new Error(
+                "The catalog changed. Review the folder again before deleting it.",
+            );
+        for (const record of await folderTree(store, id))
+            await store.delete(record.id);
+    });
+}
+
+export async function readFolders(accountId) {
+    if (accountId !== activeAccountId) throw new Error("Account changed.");
+    return (await db).getAllFromIndex("file", "type", "folder");
+}
+
+export function saveFileDetails(updates, accountId) {
+    return changeCatalog(accountId, async (store) => {
+        for (const details of updates) {
+            const current = await store.get(details.id);
+            if (current?.type === "file" && current.file_id === details.file_id)
+                await store.put({
+                    ...current,
+                    size: current.size ?? details.size,
+                    createdAt: current.createdAt ?? details.createdAt,
+                });
+        }
+    });
 }

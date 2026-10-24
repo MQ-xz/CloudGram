@@ -1,4 +1,3 @@
-import { Api } from "telegram";
 import client, { resetClient, clearStoredSession } from "./telegram";
 import { selectCatalog, releaseCatalog } from "../db/config";
 import { Store } from "../redux/store";
@@ -76,6 +75,7 @@ export async function logoutAccount(localOnly = false) {
         if (!localOnly) {
             await withTimeout(Promise.resolve(pending), 10000);
             try {
+                const { Api } = await import("telegram");
                 await withTimeout(client.invoke(new Api.auth.LogOut()), 10000);
             } catch (error) {
                 if (error.code !== 401) throw error;
