@@ -3,9 +3,9 @@ import { Link } from "react-router-dom";
 import ManageFolder from "./ManageFolder";
 import { formatDate } from "../../utils/formatFile";
 
-export default function Folder({ folder, fetchData, view = "list" }) {
+export default function Folder({ folder, fetchData }) {
     return (
-        <li className={view === "grid" ? "file-card max-w-full" : "file-row"}>
+        <li className="file-row">
             <Link
                 to={`/folder/${folder.id}`}
                 aria-label={`Open folder ${folder.name}`}

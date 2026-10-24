@@ -2,8 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { Link, useParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
-import { ArrowDownToLine, FolderOpen, LayoutGrid, List } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ArrowDownToLine, FolderOpen } from "lucide-react";
 import { readDirectory, saveFileDetails, writeCatalog } from "../../db/config";
 import Folder from "../../components/explorer/Folder";
 import File from "../../components/explorer/File";
@@ -21,7 +20,6 @@ export default function Explorer() {
     const [data, setData] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState("");
-    const [view, setView] = useState("list");
     const [search, setSearch] = useState("");
     const [sort, setSort] = useState("name-asc");
     useEffect(() => setSearch(""), [parentID]);
@@ -153,8 +151,8 @@ export default function Explorer() {
     return (
         <div className="engineering-grid flex flex-1 flex-col">
             <WorkingDir workDir={workDir} />
-            <div className="my-4 flex flex-wrap items-center justify-between gap-4">
-                <div className="min-w-0">
+            <div className="my-4 flex flex-wrap items-center gap-3">
+                <div className="min-w-0 flex-1">
                     <h1 className="break-words text-xl font-bold tracking-tight sm:text-2xl">
                         {parentID
                             ? workDir.at(-1)?.name === "Home"
@@ -163,71 +161,33 @@ export default function Explorer() {
                             : "My files"}
                     </h1>
                 </div>
-                <div className="flex shrink-0 items-center gap-3">
-                    <div
-                        className="flex border"
-                        role="group"
-                        aria-label="File view"
+                <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
+                    <Input
+                        type="search"
+                        aria-label="Search this folder"
+                        placeholder="Search this folder"
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
+                        className="h-8 min-w-0 flex-1 basis-48 text-xs sm:w-56 sm:flex-none"
+                    />
+                    <select
+                        aria-label="Sort files"
+                        value={sort}
+                        onChange={(event) => setSort(event.target.value)}
+                        className="h-8 max-w-full border bg-background px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                        <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            aria-label="List view"
-                            title="List view"
-                            aria-pressed={view === "list"}
-                            className={
-                                view === "list"
-                                    ? "bg-secondary text-primary"
-                                    : "text-muted-foreground"
-                            }
-                            onClick={() => setView("list")}
-                        >
-                            <List aria-hidden="true" />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            aria-label="Grid view"
-                            title="Grid view"
-                            aria-pressed={view === "grid"}
-                            className={
-                                view === "grid"
-                                    ? "border-l bg-secondary text-primary"
-                                    : "border-l text-muted-foreground"
-                            }
-                            onClick={() => setView("grid")}
-                        >
-                            <LayoutGrid aria-hidden="true" />
-                        </Button>
-                    </div>
+                        <option value="name-asc">Name: A–Z</option>
+                        <option value="name-desc">Name: Z–A</option>
+                        <option value="date-newest">Date: newest</option>
+                        <option value="date-oldest">Date: oldest</option>
+                        <option value="size-desc">Size: largest</option>
+                        <option value="size-asc">Size: smallest</option>
+                    </select>
                     <CreateButton parentID={parentID} fetchData={fetchData} />
                 </div>
             </div>
-            <div className="mb-4 flex flex-wrap items-center gap-3">
-                <Input
-                    type="search"
-                    aria-label="Search this folder"
-                    placeholder="Search this folder"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    className="h-8 min-w-0 flex-1 basis-48 text-xs"
-                />
-                <select
-                    aria-label="Sort files"
-                    value={sort}
-                    onChange={(event) => setSort(event.target.value)}
-                    className="h-8 max-w-full border bg-background px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                    <option value="name-asc">Name: A–Z</option>
-                    <option value="name-desc">Name: Z–A</option>
-                    <option value="date-newest">Date: newest</option>
-                    <option value="date-oldest">Date: oldest</option>
-                    <option value="size-desc">Size: largest</option>
-                    <option value="size-asc">Size: smallest</option>
-                </select>
-            </div>
             <div className="flex items-center justify-between gap-4 border-b pb-4 text-[0.65rem] uppercase tracking-[0.12em] text-muted-foreground">
-                <span>{view === "grid" ? "Items" : "Name"}</span>
+                <span>Name</span>
                 <span aria-live="polite">
                     {folderCount} {folderCount === 1 ? "folder" : "folders"} /{" "}
                     {fileCount} {fileCount === 1 ? "file" : "files"}
@@ -245,21 +205,13 @@ export default function Explorer() {
                     <Loading />
                 </div>
             ) : visible.length ? (
-                <ul
-                    aria-label="Files and folders"
-                    className={
-                        view === "grid"
-                            ? "flex flex-wrap items-start gap-3 py-3"
-                            : undefined
-                    }
-                >
+                <ul aria-label="Files and folders">
                     {visible.map((item) =>
                         item.type === "folder" ? (
                             <Folder
                                 key={item.id}
                                 folder={item}
                                 fetchData={fetchData}
-                                view={view}
                             />
                         ) : item.type === "file" ? (
                             <File
@@ -270,7 +222,6 @@ export default function Explorer() {
                                 size={item.size}
                                 createdAt={item.createdAt}
                                 deleteItem={deleteItem}
-                                view={view}
                             />
                         ) : null,
                     )}

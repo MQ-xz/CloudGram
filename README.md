@@ -8,7 +8,7 @@ CloudGram uses Telegram for file storage and IndexedDB for the file catalog in y
 
 - **Upload and Store Files**: Select multiple files and upload them sequentially to your Telegram Saved Messages. Stop an upload queue or cancel a download, and retry unfinished items without sending completed files again.
 
-- **Organized File Management**: Create, rename, move, and delete folders. Search the current folder, sort by name, size, or date, and switch between compact list and grid views. Folder deletion includes its contents and asks for confirmation before removing referenced Telegram files.
+- **Organized File Management**: Create, rename, move, and delete folders. Search the current folder and sort the list by name, size, or date. Folder deletion includes its contents and asks for confirmation before removing referenced Telegram files.
 
 - **Account Management**: View the signed-in account and log out to use another Telegram account. Each account has a separate local catalog and backup state. Catalogs with a known owner migrate automatically; older unassigned catalogs require an explicit import into an empty account catalog.
 

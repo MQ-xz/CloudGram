@@ -28,7 +28,6 @@ export default function File({
     deleteItem,
     size,
     createdAt,
-    view = "list",
 }) {
     const activeProgress = useSelector((state) =>
         state.progress.activeProgress.find((item) => item.id === id),
@@ -77,9 +76,7 @@ export default function File({
         }
     }
     return (
-        <li
-            className={`${view === "grid" ? "file-card max-w-full" : "file-row"} flex-wrap`}
-        >
+        <li className="file-row flex-wrap">
             <Icon
                 className="size-5 shrink-0 text-muted-foreground"
                 strokeWidth={1.5}
@@ -117,13 +114,7 @@ export default function File({
                     </div>
                 )}
             </div>
-            <span
-                className={
-                    view === "grid"
-                        ? "sr-only"
-                        : "hidden text-xs text-muted-foreground sm:block"
-                }
-            >
+            <span className="hidden text-xs text-muted-foreground sm:block">
                 File
             </span>
             {activeProgress?.type === "DOWNLOADING" && (
