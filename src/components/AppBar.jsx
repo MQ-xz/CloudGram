@@ -1,6 +1,7 @@
 import { Cloud, ArrowUpRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import CatalogBackup from "./CatalogBackup";
+import AccountMenu from "./AccountMenu";
 
 export default function ResponsiveAppBar() {
     return (
@@ -26,6 +27,7 @@ export default function ResponsiveAppBar() {
                 </Link>
                 <div className="flex flex-wrap items-center gap-3">
                     <CatalogBackup />
+                    <AccountMenu />
                 </div>
             </div>
         </header>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSelector } from "react-redux";
 import { v4 as uuid4 } from "uuid";
 import { LoaderCircle, FolderPlus } from "lucide-react";
 import { writeCatalog } from "../../db/config";
@@ -15,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 
 export default function CreateFolder({ parentID, fetchData, open, setOpen }) {
+    const accountId = useSelector((state) => state.auth.account?.id);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState("");
     async function addFolder(event) {
@@ -28,7 +30,7 @@ export default function CreateFolder({ parentID, fetchData, open, setOpen }) {
         };
         if (parentID) data.parent = parentID;
         try {
-            await writeCatalog("add", data);
+            await writeCatalog("add", data, accountId);
             await fetchData();
             setOpen(false);
         } catch {

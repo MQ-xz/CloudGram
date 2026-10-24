@@ -18,4 +18,21 @@ export function initializeClient() {
     return client;
 }
 
+export async function resetClient() {
+    const previous = client;
+    client = undefined;
+    if (previous) {
+        previous.session.store = { get: () => undefined, set: () => {} };
+        await previous.destroy();
+    }
+}
+
+export function clearStoredSession() {
+    for (const key of Object.keys(localStorage)) {
+        if (/^:(authKey|dcId|port|serverAddress|-?\d+)$/.test(key)) {
+            localStorage.removeItem(key);
+        }
+    }
+}
+
 export { client as default };

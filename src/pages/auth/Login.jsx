@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useDispatch } from "react-redux";
 import { Api } from "telegram";
 
 import {
@@ -17,11 +16,9 @@ import { Label } from "@/components/ui/label";
 
 import client from "../../services/telegram";
 import { API_ID, API_HASH } from "../../config/config";
-import { authenticateUser } from "../../redux/actions/authAction";
+import { authenticateAccount } from "../../services/account";
 
 export default function Login() {
-    const dispatch = useDispatch();
-
     const [isLoading, setIsLoading] = useState(false);
     const [phoneNumber, setPhoneNumber] = useState("");
     const [phoneCodeHash, setPhoneCodeHash] = useState("");
@@ -29,6 +26,18 @@ export default function Login() {
     const [passwordEnabled, setPasswordEnabled] = useState(null);
     const [phoneCode, setPhoneCode] = useState("");
     const [error, setError] = useState({});
+
+    async function finishLogin() {
+        client.session.save();
+        try {
+            await authenticateAccount(true);
+        } catch {
+            setError({
+                general:
+                    "Signed in to Telegram, but your catalog couldn't be opened. Reload this page to retry.",
+            });
+        }
+    }
 
     const sendCode = () => {
         client
@@ -79,10 +88,7 @@ export default function Login() {
                         onError: onError,
                     },
                 )
-                .then(() => {
-                    client.session.save();
-                    dispatch(authenticateUser());
-                })
+                .then(finishLogin)
                 .catch((err) => {
                     console.log(err);
                     // setError(err.errorMessage);
@@ -97,10 +103,7 @@ export default function Login() {
                         phoneCode: phoneCode,
                     }),
                 )
-                .then(() => {
-                    client.session.save();
-                    dispatch(authenticateUser());
-                })
+                .then(finishLogin)
                 .catch((err) => {
                     console.log(err.errorMessage);
                     if (err.errorMessage === "SESSION_PASSWORD_NEEDED") {
@@ -350,6 +353,18 @@ export default function Login() {
                             )}
                         </Button>
                     </form>
+                    {error.general && (
+                        <div role="alert" className="mt-4 space-y-2 text-xs">
+                            <p>{error.general}</p>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => window.location.reload()}
+                            >
+                                Reload
+                            </Button>
+                        </div>
+                    )}
                     <p className="mt-6 flex items-start gap-2 text-[0.65rem] leading-relaxed text-muted-foreground">
                         <KeyRound
                             className="mt-0.5 size-3.5 shrink-0"

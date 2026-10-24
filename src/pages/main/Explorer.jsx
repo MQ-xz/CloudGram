@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { ArrowDownToLine, FolderOpen, LayoutGrid, List } from "lucide-react";
@@ -11,6 +12,7 @@ import CreateButton from "../../components/explorer/CreateButton";
 import Loading from "../../components/Loading";
 
 export default function Explorer() {
+    const accountId = useSelector((state) => state.auth.account?.id);
     const { parentID } = useParams();
     const navigate = useNavigate();
     const [workDir, setWorkDir] = useState([{ id: undefined, name: "Home" }]);
@@ -43,7 +45,7 @@ export default function Explorer() {
             window.removeEventListener("cloudgram:catalog-restored", restored);
     }, [fetchData, navigate]);
     async function deleteItem(id) {
-        await writeCatalog("delete", id);
+        await writeCatalog("delete", id, accountId);
         await fetchData();
     }
     const folderCount = data.filter((item) => item.type === "folder").length;

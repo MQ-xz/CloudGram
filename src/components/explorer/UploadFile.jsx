@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 
 export default function UploadFile({ parentID, fetchData, open, setOpen }) {
+    const accountId = useSelector((state) => state.auth.account?.id);
     const [error, setError] = useState("");
     const [file, setFile] = useState(null);
     const [pendingUpload, setPendingUpload] = useState(null);
@@ -48,7 +49,7 @@ export default function UploadFile({ parentID, fetchData, open, setOpen }) {
                 data = { ...data, file_id: result.id };
                 setPendingUpload(data);
             }
-            await writeCatalog("put", data);
+            await writeCatalog("put", data, accountId);
             await fetchData();
             setFile(null);
             setPendingUpload(null);

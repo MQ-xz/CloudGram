@@ -41,6 +41,7 @@ export default function CatalogBackup() {
         conflict: "Review backups",
         restoring: "Restoring…",
         empty: "Catalog backup",
+        paused: "Backup paused",
     };
     const Icon =
         backup.status === "saved"

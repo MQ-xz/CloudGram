@@ -11,6 +11,8 @@ let state = { status: "checking", backups: [], localCount: 0 };
 let active = false;
 let timer;
 let running;
+let paused = false;
+let generation = 0;
 
 export const getBackupState = () => state;
 export function subscribeBackup(listener) {
@@ -77,8 +79,8 @@ function catalogRecords(records) {
     return items;
 }
 
-async function findBackups(accountId) {
-    const messages = await client.getMessages("me", {
+async function findBackups(accountId, telegram) {
+    const messages = await telegram.getMessages("me", {
         search: marker,
         limit: 30,
     });
@@ -103,7 +105,7 @@ async function findBackups(accountId) {
             if (backups.length === 5) break;
             continue;
         }
-        const bytes = await client.downloadMedia(message.media);
+        const bytes = await telegram.downloadMedia(message.media);
         if (!bytes || bytes.length > maxBytes) continue;
         try {
             const snapshot = JSON.parse(new TextDecoder().decode(bytes));
@@ -168,7 +170,7 @@ async function catalogState(accountId) {
 }
 
 function queueBackup() {
-    if (!active) return;
+    if (!active || paused) return;
     clearTimeout(timer);
     if (!["restore", "conflict", "restoring"].includes(state.status)) {
         publish({ status: "pending", error: "" });
@@ -179,19 +181,21 @@ function queueBackup() {
 export function runBackup(keepLocal = false) {
     if (running) return running;
     clearTimeout(timer);
+    const currentGeneration = generation;
+    const telegram = client;
     const operation = async () => {
-        if (!active) return;
+        if (!active || paused) return;
         publish(
             databaseBlocked
                 ? { status: "failed", error: databaseUpgradeMessage }
                 : { status: "checking", error: "" },
         );
-        const accountId = (await client.getMe()).id.toString();
-
+        const accountId = (await telegram.getMe()).id.toString();
+        if (!active || paused || generation !== currentGeneration) return;
         const { database } = await catalogState(accountId);
         publish({ status: "checking", error: "" });
-        const backups = await findBackups(accountId);
-
+        const backups = await findBackups(accountId, telegram);
+        if (!active || paused || generation !== currentGeneration) return;
         let { metadata, records } = await catalogState(accountId);
         const latest = backups[0];
         publish({
@@ -221,7 +225,7 @@ export function runBackup(keepLocal = false) {
             return;
         }
         ({ metadata, records } = await catalogState(accountId));
-
+        if (!active || paused || generation !== currentGeneration) return;
         const snapshot = {
             app: "CloudGram",
             version: 1,
@@ -237,14 +241,14 @@ export function runBackup(keepLocal = false) {
         if (bytes.length > maxBytes)
             throw new Error("Catalog backup is too large.");
         publish({ status: "uploading" });
-        const result = await client.sendFile("me", {
+        const result = await telegram.sendFile("me", {
             file: new CustomFile(filename, bytes.length, "", bytes),
             caption: `${marker} v1`,
             forceDocument: true,
             silent: true,
             workers: 1,
         });
-
+        if (!active || paused || generation !== currentGeneration) return;
         if (!Number.isSafeInteger(result?.id) || result.id <= 0) {
             throw new Error("Missing backup message ID.");
         }
@@ -258,7 +262,7 @@ export function runBackup(keepLocal = false) {
             lastBackupAt: snapshot.createdAt,
         });
         await transaction.done;
-
+        if (generation !== currentGeneration || paused || !active) return;
         publish({
             status: dirty ? "pending" : "saved",
             localRevision: current.revision,
@@ -275,6 +279,7 @@ export function runBackup(keepLocal = false) {
             : operation()
     )
         .catch((error) => {
+            if (generation !== currentGeneration) return;
             publish({
                 status: "failed",
                 error: error?.message?.startsWith("This browser's catalog")
@@ -284,20 +289,22 @@ export function runBackup(keepLocal = false) {
         })
         .finally(() => {
             running = undefined;
-            if (active && state.status === "pending") queueBackup();
+            if (active && !paused && state.status === "pending") queueBackup();
         });
     return running;
 }
 
 export function restoreCatalog(messageId) {
-    if (running || !active) return Promise.resolve(false);
+    if (running || paused || !active) return Promise.resolve(false);
     clearTimeout(timer);
     const reviewedRevision = state.localRevision;
+    const currentGeneration = generation;
+    const telegram = client;
     publish({ status: "restoring", error: "" });
     const operation = async () => {
-        const accountId = (await client.getMe()).id.toString();
+        const accountId = (await telegram.getMe()).id.toString();
         const { database } = await catalogState(accountId);
-
+        if (generation !== currentGeneration || paused || !active) return false;
         const backup = state.backups.find(
             (item) => item.messageId === messageId,
         );
@@ -334,7 +341,7 @@ export function restoreCatalog(messageId) {
             await transaction.done.catch(() => {});
             throw error;
         }
-
+        if (generation !== currentGeneration || paused || !active) return false;
         publish({
             status: dirty ? "pending" : "saved",
             localCount: records.length,
@@ -355,6 +362,7 @@ export function restoreCatalog(messageId) {
             : operation()
     )
         .catch(() => {
+            if (generation !== currentGeneration) return false;
             publish({
                 status: "failed",
                 error: "Could not restore the catalog. Your existing catalog has been kept. Retry checking backups; the catalog may have changed in another tab.",
@@ -363,13 +371,14 @@ export function restoreCatalog(messageId) {
         })
         .finally(() => {
             running = undefined;
-            if (active && state.status === "pending") queueBackup();
+            if (active && !paused && state.status === "pending") queueBackup();
         });
     return running;
 }
 
 export function startCatalogBackup() {
     active = true;
+    paused = false;
     const retry = () => runBackup();
     const blocked = () =>
         publish({ status: "failed", error: databaseUpgradeMessage });
@@ -379,7 +388,7 @@ export function startCatalogBackup() {
             : undefined;
     if (channel)
         channel.onmessage = (event) => {
-            if (!active) return;
+            if (!active || paused) return;
             if (event.data === "restored") {
                 window.dispatchEvent(new Event("cloudgram:catalog-restored"));
                 retry();
@@ -402,4 +411,31 @@ export function startCatalogBackup() {
         window.removeEventListener("focus", retry);
         window.removeEventListener("cloudgram:storage-blocked", blocked);
     };
+}
+
+export function pauseCatalogBackup() {
+    paused = true;
+    generation++;
+    clearTimeout(timer);
+    publish({ status: "paused" });
+    return running;
+}
+
+export async function resumeCatalogBackup() {
+    paused = false;
+    await running;
+    if (active && !paused) runBackup();
+}
+
+export function resetCatalogBackup() {
+    pauseCatalogBackup();
+    active = false;
+    publish({
+        status: "checking",
+        backups: [],
+        localCount: 0,
+        localRevision: undefined,
+        error: "",
+        lastBackupAt: undefined,
+    });
 }

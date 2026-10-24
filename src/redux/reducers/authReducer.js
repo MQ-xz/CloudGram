@@ -1,6 +1,7 @@
 export default function reducer(
     state = {
         isAuthenticated: false,
+        account: null,
     },
     action,
 ) {
@@ -9,11 +10,13 @@ export default function reducer(
             return {
                 ...state,
                 isAuthenticated: true,
+                account: action.account,
             };
         case "LOGOUT_SUCCESS":
             return {
                 ...state,
                 isAuthenticated: false,
+                account: null,
             };
         default:
             return state;

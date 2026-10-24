@@ -11,6 +11,8 @@ export default function reducer(
     action,
 ) {
     switch (action.type) {
+        case "LOGOUT_SUCCESS":
+            return { activeProgress: [] };
         case "UPLOADING":
         case "DOWNLOADING":
             if (state.activeProgress.find((item) => item.id === action.id)) {

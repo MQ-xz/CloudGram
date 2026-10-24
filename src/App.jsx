@@ -5,7 +5,11 @@ import { Api } from "telegram";
 
 import { AuthRoutes, UnAuthRoutes } from "./AppRoutes";
 import { initializeClient } from "./services/telegram";
-import { authenticateUser } from "./redux/actions/authAction";
+import {
+    authenticateAccount,
+    handleSessionEvent,
+    sessionEventKey,
+} from "./services/account";
 
 import SplashScreen from "./components/SplashScreen";
 
@@ -30,7 +34,7 @@ function App(props) {
                 if (!client.connected) throw new Error("Telegram is offline");
                 try {
                     await client.invoke(new Api.updates.GetState());
-                    if (!cancelled) dispatch(authenticateUser());
+                    if (!cancelled) await authenticateAccount();
                 } catch (error) {
                     if (error.code !== 401) throw error;
                 }
@@ -53,6 +57,16 @@ function App(props) {
             cancelled = true;
         };
     }, [dispatch, retryAttempt]);
+
+    useEffect(() => {
+        const changed = (event) => {
+            if (event.key !== sessionEventKey || !event.newValue) return;
+            setIsLoading(true);
+            handleSessionEvent(event);
+        };
+        window.addEventListener("storage", changed);
+        return () => window.removeEventListener("storage", changed);
+    }, []);
 
     function retryStartup() {
         setStartupError(null);
