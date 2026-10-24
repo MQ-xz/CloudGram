@@ -1,5 +1,6 @@
 import { Cloud, ArrowUpRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import CatalogBackup from "./CatalogBackup";
 
 export default function ResponsiveAppBar() {
     return (
@@ -23,6 +24,9 @@ export default function ResponsiveAppBar() {
                         _
                     </span>
                 </Link>
+                <div className="flex flex-wrap items-center gap-3">
+                    <CatalogBackup />
+                </div>
             </div>
         </header>
     );

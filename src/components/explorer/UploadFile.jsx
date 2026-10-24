@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useSelector } from "react-redux";
 import { v4 as uuid4 } from "uuid";
 import { Upload, FileUp, LoaderCircle } from "lucide-react";
-import { db } from "../../db/config";
+import { writeCatalog } from "../../db/config";
 import uploadFile from "../../utils/uploadFile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,7 +48,7 @@ export default function UploadFile({ parentID, fetchData, open, setOpen }) {
                 data = { ...data, file_id: result.id };
                 setPendingUpload(data);
             }
-            await (await db).put("file", data);
+            await writeCatalog("put", data);
             await fetchData();
             setFile(null);
             setPendingUpload(null);
@@ -109,8 +109,8 @@ export default function UploadFile({ parentID, fetchData, open, setOpen }) {
                             </p>
                         )}
                         <p className="text-xs text-muted-foreground">
-                            Your file stays in your own Telegram account. Folder
-                            information is saved in this browser.
+                            Your file stays in your own Telegram account.
+                            Catalog backups also use your Saved Messages.
                         </p>
                     </div>
                     {isUploading && (

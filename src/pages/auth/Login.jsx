@@ -190,8 +190,8 @@ export default function Login() {
                                     Your account. Your files.
                                 </h2>
                                 <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                                    Files stay in Telegram. Folder information
-                                    stays in this browser.
+                                    Files stay in Telegram. Your folder catalog
+                                    is backed up to Saved Messages.
                                 </p>
                             </div>
                         </div>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { v4 as uuid4 } from "uuid";
 import { LoaderCircle, FolderPlus } from "lucide-react";
-import { db } from "../../db/config";
+import { writeCatalog } from "../../db/config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,7 +28,7 @@ export default function CreateFolder({ parentID, fetchData, open, setOpen }) {
         };
         if (parentID) data.parent = parentID;
         try {
-            await (await db).add("file", data);
+            await writeCatalog("add", data);
             await fetchData();
             setOpen(false);
         } catch {

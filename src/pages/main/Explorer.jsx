@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ArrowDownToLine, FolderOpen, LayoutGrid, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { db } from "../../db/config";
+import { db, writeCatalog } from "../../db/config";
 import Folder from "../../components/explorer/Folder";
 import File from "../../components/explorer/File";
 import WorkingDir from "../../components/explorer/WorkingDir";
@@ -11,6 +12,7 @@ import Loading from "../../components/Loading";
 
 export default function Explorer() {
     const { parentID } = useParams();
+    const navigate = useNavigate();
     const [workDir, setWorkDir] = useState([{ id: undefined, name: "Home" }]);
     const [data, setData] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -30,8 +32,18 @@ export default function Explorer() {
     useEffect(() => {
         fetchData();
     }, [fetchData]);
+    useEffect(() => {
+        const restored = () => {
+            setWorkDir([{ id: undefined, name: "Home" }]);
+            navigate("/");
+            fetchData();
+        };
+        window.addEventListener("cloudgram:catalog-restored", restored);
+        return () =>
+            window.removeEventListener("cloudgram:catalog-restored", restored);
+    }, [fetchData, navigate]);
     async function deleteItem(id) {
-        await (await db).delete("file", id);
+        await writeCatalog("delete", id);
         await fetchData();
     }
     const folderCount = data.filter((item) => item.type === "folder").length;
@@ -158,7 +170,7 @@ export default function Explorer() {
                 </div>
             )}
             <footer className="mt-auto flex flex-col justify-between gap-3 pt-10 text-[0.65rem] text-muted-foreground sm:flex-row">
-                <p>Files in Telegram. Folder information in this browser.</p>
+                <p>Files and catalog backups in Telegram.</p>
                 <span className="text-primary">
                     Make space<span aria-hidden="true">_</span>
                 </span>
