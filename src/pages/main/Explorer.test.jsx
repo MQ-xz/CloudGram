@@ -143,7 +143,7 @@ describe("file explorer", () => {
         await user.click(screen.getByRole("button", { name: "Save changes" }));
         await waitFor(() =>
             expect(
-                screen.queryByRole("link", { name: "Open folder Renamed" }),
+                screen.queryByRole("dialog", { name: "Move folder" }),
             ).toBeNull(),
         );
         await user.click(
