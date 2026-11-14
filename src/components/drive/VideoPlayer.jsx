@@ -579,8 +579,14 @@ const VideoPlayer = forwardRef(function VideoPlayer(
     }, [prefs.volume, prefs.muted]);
 
     useEffect(() => {
-        const onChange = () =>
-            setFullscreen(document.fullscreenElement === box.current);
+        const onChange = () => {
+            const own = document.fullscreenElement === box.current;
+            setFullscreen(own);
+            // Everything outside a fullscreen element is inert, so the
+            // dialog's focus trap cannot hold the focus and keys would go to
+            // <body>. The box is inside the dialog, so its keys still reach it.
+            if (own) box.current.focus({ preventScroll: true });
+        };
         document.addEventListener("fullscreenchange", onChange);
         return () => document.removeEventListener("fullscreenchange", onChange);
     }, []);
@@ -1049,6 +1055,7 @@ const VideoPlayer = forwardRef(function VideoPlayer(
     return (
         <Box
             ref={box}
+            tabIndex={-1}
             onPointerMove={poke}
             onPointerLeave={() => !paused && setShown(false)}
             sx={{
@@ -1059,6 +1066,7 @@ const VideoPlayer = forwardRef(function VideoPlayer(
                 overflow: "hidden",
                 cursor: controlsVisible ? "default" : "none",
                 userSelect: "none",
+                outline: "none",
             }}
         >
             {(grouped ? [0, 1] : [0]).map((k) => (
