@@ -189,9 +189,13 @@ export default function ResumeBanner({ onNotice }) {
     async function onDiscard() {
         setBusy(true);
         try {
+            const files = [...(found?.files ?? []), ...(waiting ?? [])];
+            // discard() refuses a list without the account scope it was
+            // scanned under; rebuilt lists (denied, needsPick) carry it per file
             await discard({
-                files: [...(found?.files ?? []), ...(waiting ?? [])],
+                files,
                 imports: found?.imports ?? [],
+                scope: found?.scope ?? files[0]?.scope,
             });
             report("Đã bỏ các tệp tải lên dở.");
             setFound(null);
