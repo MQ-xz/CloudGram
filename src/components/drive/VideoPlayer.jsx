@@ -714,14 +714,20 @@ const VideoPlayer = forwardRef(function VideoPlayer(
     );
 
     // made only once the video plays, so drawing it never slows the start
-    const [board, making, problem, rebuildStoryboard, storyboardResult] =
-        useStoryboard(
-            // one picture per part would not line up with the whole video's bar
-            grouped ? NO_RECORD : record,
-            // a converted video is drawn from the bytes already in this tab
-            () => (local ? src : streamUrl(record, { quiet: true })),
-            started,
-        );
+    const [
+        board,
+        making,
+        problem,
+        rebuildStoryboard,
+        storyboardResult,
+        storyboardProgress,
+    ] = useStoryboard(
+        // one picture per part would not line up with the whole video's bar
+        grouped ? NO_RECORD : record,
+        // a converted video is drawn from the bytes already in this tab
+        () => (local ? src : streamUrl(record, { quiet: true })),
+        started,
+    );
     useEffect(() => {
         onPlayback?.({
             id: record.id,
@@ -1246,7 +1252,7 @@ const VideoPlayer = forwardRef(function VideoPlayer(
                 </IconButton>
             )}
 
-            {!grouped && (started || board || problem) && (
+            {!grouped && (started || board || problem || making) && (
                 <Stack
                     direction="row"
                     alignItems="center"
@@ -1255,29 +1261,49 @@ const VideoPlayer = forwardRef(function VideoPlayer(
                         position: "absolute",
                         top: notice ? 78 : 24,
                         left: 16,
-                        opacity: controlsVisible ? 1 : 0,
+                        opacity: making || controlsVisible ? 1 : 0,
                         transition: "opacity .2s",
                         pointerEvents: controlsVisible ? "auto" : "none",
                     }}
                 >
-                    <Button
-                        size="small"
-                        onClick={rebuildStoryboard}
-                        tabIndex={controlsVisible ? 0 : -1}
-                        disabled={making}
-                        startIcon={
-                            making ? (
-                                <CircularProgress size={14} />
-                            ) : (
-                                <ReplayIcon />
-                            )
-                        }
-                        sx={{ color: "#3ea6ff", bgcolor: "rgba(0,0,0,.7)" }}
-                    >
-                        {making
-                            ? "Đang tạo ảnh xem trước…"
-                            : "Tạo lại ảnh xem trước"}
-                    </Button>
+                    {!waiting && (paused || ended || error) && (
+                        <Button
+                            size="small"
+                            onClick={rebuildStoryboard}
+                            tabIndex={controlsVisible ? 0 : -1}
+                            disabled={making}
+                            startIcon={
+                                making ? (
+                                    <CircularProgress size={14} />
+                                ) : (
+                                    <ReplayIcon />
+                                )
+                            }
+                            sx={{ color: "#3ea6ff", bgcolor: "rgba(0,0,0,.7)" }}
+                        >
+                            {making
+                                ? "Đang tạo ảnh xem trước…"
+                                : "Tạo lại ảnh xem trước"}
+                        </Button>
+                    )}
+                    {making && (
+                        <Typography
+                            role="status"
+                            sx={{ ...white, fontSize: 14 }}
+                        >
+                            {storyboardProgress?.phase === "waiting"
+                                ? "Đang chờ tới lượt…"
+                                : storyboardProgress?.phase === "retrying"
+                                ? `Đang thử lại (lần ${storyboardProgress.attempt}/3)…`
+                                : storyboardProgress?.phase === "uploading"
+                                ? "Đang tải lên…"
+                                : storyboardProgress?.phase === "saving"
+                                ? "Đang lưu…"
+                                : `Đang tạo ảnh xem trước ${
+                                      storyboardProgress?.done ?? 0
+                                  }/81`}
+                        </Typography>
+                    )}
                     {storyboardResult && (
                         <Typography
                             role="status"

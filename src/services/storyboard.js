@@ -94,7 +94,7 @@ function wait(ms, signal) {
     });
 }
 
-async function retry(work, signal, delays = RETRY_DELAYS) {
+async function retry(work, signal, delays = RETRY_DELAYS, onRetry) {
     let attempt = 0;
     for (;;) {
         check(signal);
@@ -109,6 +109,7 @@ async function retry(work, signal, delays = RETRY_DELAYS) {
             const counts = isOnline() && !error?.seconds;
             if (error.permanent || (counts && attempt >= delays.length))
                 throw error;
+            onRetry?.(attempt + (counts ? 2 : 1));
             await wait(
                 error?.seconds ? error.seconds * 1000 : delays[attempt] ?? 5000,
                 signal,
@@ -122,8 +123,11 @@ async function retry(work, signal, delays = RETRY_DELAYS) {
  * Draw the 81 frames of the video at `src` into one JPEG.
  * Sample only 64 pixels per cell; tolerate dark openings and static shots.
  */
-async function draw(src, { signal } = {}) {
+async function draw(src, { signal, onProgress, attempt = 1 } = {}) {
     check(signal);
+    const report = (done) =>
+        onProgress?.({ phase: "drawing", done, total: FRAMES, attempt });
+    report(0);
     const video = document.createElement("video");
     video.muted = true;
     video.preload = "metadata";
@@ -166,6 +170,7 @@ async function draw(src, { signal } = {}) {
                 if (signal?.aborted || video.error) throw error;
                 missed += 1;
                 if (missed >= STUCK) throw new Error("The stream is stuck");
+                report(i + 1);
                 continue;
             }
             pixels.drawImage(video, 0, 0, 8, 8);
@@ -189,6 +194,7 @@ async function draw(src, { signal } = {}) {
                 h,
             );
             drawn += 1;
+            report(i + 1);
         }
         if (drawn < Math.ceil(FRAMES * 0.9)) throw new Error("Too few frames");
         // Reject only >90% near-black cells (60/64 pixels below 12/255), or
@@ -292,8 +298,23 @@ function make(fileId, src, options = {}) {
                 .catch(() => {})
                 .then(() => make(fileId, src, options));
     }
-    if (s.making.has(fileId)) return s.making.get(fileId);
+    if (s.making.has(fileId)) {
+        const job = s.making.get(fileId);
+        if (options.onProgress) {
+            job.listeners.add(options.onProgress);
+            if (job.progress) options.onProgress(job.progress);
+        }
+        return job;
+    }
     const op = operation(s, options.signal);
+    const listeners = new Set(options.onProgress ? [options.onProgress] : []);
+    let attempt = 1;
+    const report = (progress) => {
+        job.progress = progress;
+        for (const listener of listeners) listener(progress);
+    };
+    const phase = (name, done = 0) =>
+        report({ phase: name, done, total: FRAMES, attempt });
     if (options.background) s.prefetches.set(fileId, op);
     const job = s.line
         .catch(() => {})
@@ -316,7 +337,12 @@ function make(fileId, src, options = {}) {
                 storyboard = await retry(
                     async () => {
                         op.assert();
-                        const drawn = await draw(src(), { signal: op.signal });
+                        const drawn = await draw(src(), {
+                            signal: op.signal,
+                            onProgress: report,
+                            attempt,
+                        });
+                        phase("uploading", FRAMES);
                         return {
                             message: await send(drawn.blob, client, op),
                             duration: drawn.duration,
@@ -324,6 +350,10 @@ function make(fileId, src, options = {}) {
                     },
                     op.signal,
                     options.retryDelays,
+                    (next) => {
+                        attempt = next;
+                        phase("retrying");
+                    },
                 );
             } catch (error) {
                 op.assert();
@@ -364,6 +394,7 @@ function make(fileId, src, options = {}) {
                 storyboard: r.storyboard,
             }));
             // every record of this video shares it
+            phase("saving", FRAMES);
             for (const r of records) update(r.id, { storyboard });
             try {
                 await flush();
@@ -400,7 +431,11 @@ function make(fileId, src, options = {}) {
             op.close();
             if (s.prefetches.get(fileId) === op) s.prefetches.delete(fileId);
             if (s.making.get(fileId) === job) s.making.delete(fileId);
+            listeners.clear();
         });
+    job.listeners = listeners;
+    // Only queued work needs a waiting label; the first job starts immediately.
+    if (s.making.size) phase("waiting");
     s.line = job;
     s.making.set(fileId, job);
     return job;
@@ -531,7 +566,7 @@ async function getStoryboard(record, streamSrc, allowMake, options = {}) {
 }
 
 /**
- * Returns [board, making, problem, rebuild, result]: the storyboard once it is
+ * Returns [board, making, problem, rebuild, result, progress]: the storyboard once it is
  * at hand or null, whether one is being drawn, a problem message or null,
  * an explicit rebuild function, and a rebuild success message or null.
  * With `streamSrc` (a function giving a stream URL) and `allowMake`, one is
@@ -543,6 +578,21 @@ export function useStoryboard(record, streamSrc, allowMake) {
     // why there is none, shown in the player so it can be reported
     const [problem, setProblem] = useState(null);
     const [result, setResult] = useState(null);
+    const [progress, setProgress] = useState(null);
+    const lastProgress = useRef(null);
+    const report = (next) => {
+        const old = lastProgress.current;
+        // One update per completed cell, plus phase/attempt transitions.
+        if (
+            old?.phase === next.phase &&
+            old.done === next.done &&
+            old.attempt === next.attempt
+        )
+            return;
+        lastProgress.current = next;
+        setProgress(next);
+        setMaking(true);
+    };
     const active = useRef(null);
     const rebuilding = useRef(false);
     const source = useRef(streamSrc);
@@ -560,31 +610,45 @@ export function useStoryboard(record, streamSrc, allowMake) {
         setProblem(null);
         setResult(null);
         setMaking(false);
+        lastProgress.current = null;
+        setProgress(null);
         return () => controller.abort();
     }, [recordId, fileId, scope]);
     useEffect(() => {
         const controller = active.current;
         let cancelled = false;
+        let generated = false;
         if (!fileId || rebuilding.current) return undefined;
         setMaking(Boolean(allowMake && !message));
         getStoryboard(record, () => source.current(), allowMake, {
             scope,
             signal: controller.signal,
+            onProgress: (next) => {
+                if ((!cancelled || generated) && !controller.signal.aborted) {
+                    generated = true;
+                    // Our own tree publication must not hide the saving phase.
+                    rebuilding.current = true;
+                    report(next);
+                }
+            },
         })
             .then((b) => {
-                if (!cancelled && !controller.signal.aborted) setBoard(b);
+                if ((!cancelled || generated) && !controller.signal.aborted)
+                    setBoard(b);
             })
             .catch((error) => {
-                if (!cancelled && !controller.signal.aborted)
+                if ((!cancelled || generated) && !controller.signal.aborted)
                     setProblem(error.message);
             })
             .finally(() => {
                 if (
-                    !cancelled &&
+                    (!cancelled || generated) &&
                     !controller.signal.aborted &&
-                    !rebuilding.current
-                )
+                    (!rebuilding.current || generated)
+                ) {
+                    if (generated) rebuilding.current = false;
                     setMaking(false);
+                }
             });
         return () => {
             cancelled = true;
@@ -609,7 +673,13 @@ export function useStoryboard(record, streamSrc, allowMake) {
             const storyboard = await regenerate(
                 record,
                 () => source.current(),
-                { signal: controller.signal, scope },
+                {
+                    signal: controller.signal,
+                    scope,
+                    onProgress: (next) => {
+                        if (!controller.signal.aborted) report(next);
+                    },
+                },
             );
             const b = await load(
                 { ...record, storyboard },
@@ -629,7 +699,7 @@ export function useStoryboard(record, streamSrc, allowMake) {
             }
         }
     };
-    return [board, making, problem, rebuild, result];
+    return [board, making, problem, rebuild, result, progress];
 }
 
 /** Storyboard message ids to delete along with these video messages. */
