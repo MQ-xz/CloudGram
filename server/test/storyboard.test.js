@@ -403,6 +403,57 @@ test("abort during seek stops work and writes nothing", async () => {
     assert.equal(h.sessionState().failed.has(1), false);
 });
 
+for (const queued of [false, true])
+    test(`live dedup waiter retries after owner abort; queued=${queued}`, async () => {
+        const h = await harness();
+        h.records.push({ id: "c", file_id: 2 });
+        const blocker = queued ? h.make(2, () => "stream") : null;
+        const owner = new AbortController();
+        const waiter = new AbortController();
+        const job = h.make(1, () => "owner", {
+            signal: owner.signal,
+            onProgress: (p) => {
+                if (!queued && p.phase === "drawing" && p.done === 1)
+                    owner.abort();
+            },
+        });
+        const rejected = assert.rejects(job, { name: "AbortError" });
+        const progress = [];
+        const joined = h.make(1, () => "waiter", {
+            signal: waiter.signal,
+            onProgress: (p) => progress.push(p),
+        });
+        if (queued) owner.abort();
+        const board = await joined;
+        await rejected;
+        await blocker;
+        assert.equal(waiter.signal.aborted, false);
+        assert.equal(board.duration, 81);
+        assert.equal(h.records[0].storyboard.message, board.message);
+        assert.equal(progress.at(-1).phase, "saving");
+        assert.equal(h.stats().sent, queued ? 2 : 1);
+        assert.equal(h.stats().draws, 2);
+        assert.equal(h.sessionState().failed.has(1), false);
+    });
+
+test("dedup waiter does not retry across accounts or after its own abort", async () => {
+    for (const changedAccount of [false, true]) {
+        const h = await harness();
+        const owner = new AbortController();
+        const waiter = new AbortController();
+        const job = h.make(1, () => "owner", { signal: owner.signal });
+        const rejected = assert.rejects(job, { name: "AbortError" });
+        const joined = h.make(1, () => "waiter", { signal: waiter.signal });
+        const joinedRejected = assert.rejects(joined, { name: "AbortError" });
+        if (changedAccount) h.switchAccount();
+        else waiter.abort();
+        owner.abort();
+        await Promise.all([rejected, joinedRejected]);
+        assert.equal(h.stats().sent, 0);
+        assert.ok(h.records.every((r) => !r.storyboard));
+    }
+});
+
 test("account change before upload writes nothing", async () => {
     const h = await harness();
     await assert.rejects(
@@ -624,6 +675,33 @@ function hookRunner() {
     };
 }
 const tick = () => new Promise((resolve) => setImmediate(resolve));
+
+for (const rebuild of [false, true])
+    test(`player ignores foreign AbortError; rebuild=${rebuild}`, async () => {
+        const runner = hookRunner();
+        const error = new DOMException("Storyboard cancelled", "AbortError");
+        const h = await harness({
+            react: runner.react,
+            fetchError: rebuild ? null : error,
+            flush: async () => {
+                throw error;
+            },
+        });
+        oldStoryboard(h);
+        runner.render(h, h.records[0]);
+        const loading = h.sessionState().loaded.get(50);
+        if (rebuild) await loading;
+        else await assert.rejects(loading, { name: "AbortError" });
+        await tick();
+        if (rebuild) await runner.render(h, h.records[0])[3]();
+        await tick();
+        const after = runner.render(h, h.records[0]);
+        assert.equal(after[2], null);
+        assert.equal(after[1], false);
+        assert.equal(after[4], null);
+        assert.equal(h.records[0].storyboard.message, 50);
+        runner.close();
+    });
 
 test("automatic current-video generation keeps progress through tree publication", async () => {
     const runner = hookRunner();

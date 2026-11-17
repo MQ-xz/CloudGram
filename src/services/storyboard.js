@@ -286,7 +286,10 @@ async function send(blob, client, op) {
 
 function make(fileId, src, options = {}) {
     const s = sessionState();
-    if (options.scope !== undefined && options.scope !== s.scope)
+    if (
+        options.signal?.aborted ||
+        (options.scope !== undefined && options.scope !== s.scope)
+    )
         return Promise.reject(aborted());
     if (!options.background) {
         // Playback takes priority even over a neighbour queued before navigation.
@@ -304,6 +307,18 @@ function make(fileId, src, options = {}) {
             job.listeners.add(options.onProgress);
             if (job.progress) options.onProgress(job.progress);
         }
+        // A live waiter must not inherit cancellation from the job's owner.
+        if (options.signal !== job.ownerSignal)
+            return job.catch((error) => {
+                if (
+                    error.name === "AbortError" &&
+                    job.ownerSignal?.aborted &&
+                    !options.signal?.aborted &&
+                    uploadScope() === s.scope
+                )
+                    return make(fileId, src, { ...options, scope: s.scope });
+                throw error;
+            });
         return job;
     }
     const op = operation(s, options.signal);
@@ -434,6 +449,7 @@ function make(fileId, src, options = {}) {
             listeners.clear();
         });
     job.listeners = listeners;
+    job.ownerSignal = options.signal;
     // Only queued work needs a waiting label; the first job starts immediately.
     if (s.making.size) phase("waiting");
     s.line = job;
@@ -637,7 +653,11 @@ export function useStoryboard(record, streamSrc, allowMake) {
                     setBoard(b);
             })
             .catch((error) => {
-                if ((!cancelled || generated) && !controller.signal.aborted)
+                if (
+                    error.name !== "AbortError" &&
+                    (!cancelled || generated) &&
+                    !controller.signal.aborted
+                )
                     setProblem(error.message);
             })
             .finally(() => {
@@ -690,7 +710,7 @@ export function useStoryboard(record, streamSrc, allowMake) {
                 setResult("Đã tạo lại ảnh xem trước");
             }
         } catch (error) {
-            if (!controller.signal.aborted)
+            if (error.name !== "AbortError" && !controller.signal.aborted)
                 setProblem(`Không tạo lại được: ${error.message}`);
         } finally {
             if (!controller.signal.aborted) {
