@@ -88,6 +88,8 @@ import {
 import { Store } from "../../redux/store";
 import { activeEntry } from "../../redux/reducers/progressReducer";
 import * as drive from "../../services/drive";
+import { regenerateThumbnail } from "../../services/thumbnailOverride";
+import { uploadScope } from "../../services/uploadLog";
 import { startTreeBackup, stopTreeBackup } from "../../services/treeBackup";
 import {
     accountName,
@@ -233,6 +235,7 @@ export default function DriveApp({ mode, onToggleMode }) {
     const [preview, setPreview] = useState(null);
     const [dialog, setDialog] = useState(null);
     const [busy, setBusy] = useState(false);
+    const [thumbnailJobs, setThumbnailJobs] = useState(new Map());
     const [notice, setNotice] = useState(null);
     const [dropping, setDropping] = useState(false);
     const dragDepth = useRef(0);
@@ -443,7 +446,8 @@ export default function DriveApp({ mode, onToggleMode }) {
 
     const onContextMenu = useCallback(
         (event, item, fromButton) => {
-            if (!selected.has(item.id)) {
+            const thumbnail = fromButton === "thumbnail";
+            if (thumbnail || !selected.has(item.id)) {
                 setSelected(new Set([item.id]));
                 setAnchorIndex(items.indexOf(item));
             }
@@ -454,7 +458,10 @@ export default function DriveApp({ mode, onToggleMode }) {
                 top: rect ? rect.bottom : event.clientY,
                 left: rect ? rect.left - 180 : event.clientX,
                 // the menu acts on the selection, widened to the clicked item
-                ids: selected.has(item.id) ? [...selected] : [item.id],
+                ids:
+                    !thumbnail && selected.has(item.id)
+                        ? [...selected]
+                        : [item.id],
             });
         },
         [selected, items],
@@ -488,6 +495,35 @@ export default function DriveApp({ mode, onToggleMode }) {
         setBusy(false);
     }
 
+    const thumbnailScope = uploadScope();
+    async function rebuildThumbnail(record) {
+        if (!record || thumbnailJobs.get(record.file_id) === thumbnailScope)
+            return;
+        const scope = thumbnailScope;
+        setThumbnailJobs((now) => new Map(now).set(record.file_id, scope));
+        try {
+            await regenerateThumbnail(record, { scope });
+            if (uploadScope() === scope)
+                setNotice({
+                    severity: "success",
+                    text: "Đã tạo lại hình thu nhỏ",
+                });
+        } catch (error) {
+            if (uploadScope() === scope && error.name !== "AbortError")
+                setNotice({
+                    severity: "error",
+                    text: `Không tạo lại được hình thu nhỏ: ${error.message}`,
+                });
+        } finally {
+            setThumbnailJobs((now) => {
+                const next = new Map(now);
+                if (next.get(record.file_id) === scope)
+                    next.delete(record.file_id);
+                return next;
+            });
+        }
+    }
+
     function act(action, targets = selectedItems) {
         const ids = targets.map((t) => t.id);
         const single = targets.length === 1 ? targets[0] : null;
@@ -497,6 +533,9 @@ export default function DriveApp({ mode, onToggleMode }) {
                 break;
             case "download":
                 downloadMany(targets);
+                break;
+            case "thumbnail":
+                rebuildThumbnail(single);
                 break;
             case "retry":
                 ids.forEach(retryUpload);
@@ -1641,6 +1680,10 @@ export default function DriveApp({ mode, onToggleMode }) {
                 items={menuItems}
                 inTrash={inTrash}
                 showLocate={view.kind !== "folder" && !inTrash}
+                thumbnailBusy={menuItems.some(
+                    (item) =>
+                        thumbnailJobs.get(item.file_id) === thumbnailScope,
+                )}
                 canRetry={canRetry}
                 onClose={() => setMenu(null)}
                 onAction={(action) => act(action, menuItems)}
