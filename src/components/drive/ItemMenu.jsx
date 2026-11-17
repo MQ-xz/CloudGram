@@ -64,6 +64,7 @@ export default function ItemMenu({
     items,
     inTrash,
     canRetry,
+    thumbnailBusy,
     showLocate,
     onClose,
     onAction,
@@ -159,6 +160,18 @@ export default function ItemMenu({
                               onClick={act("share")}
                           />
                       ),
+                      single?.type === "file" &&
+                          ["video", "image"].includes(kindOf(single)) && (
+                              <Item
+                                  key="thumbnail"
+                                  icon={icon(ReplayIcon)}
+                                  label="Tạo lại hình thu nhỏ"
+                                  disabled={
+                                      single.file_id == null || thumbnailBusy
+                                  }
+                                  onClick={act("thumbnail")}
+                              />
+                          ),
                       canRetry && (
                           <Item
                               key="retry"
@@ -229,6 +242,7 @@ ItemMenu.propTypes = {
     items: PropTypes.array,
     inTrash: PropTypes.bool,
     canRetry: PropTypes.bool,
+    thumbnailBusy: PropTypes.bool,
     showLocate: PropTypes.bool,
     onClose: PropTypes.func,
     onAction: PropTypes.func,

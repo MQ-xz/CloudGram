@@ -362,6 +362,7 @@ const VideoPlayer = forwardRef(function VideoPlayer(
         onPrev,
         onDownload,
         onExternal,
+        onPlayback,
         parts,
         startAt = 0,
     },
@@ -713,13 +714,20 @@ const VideoPlayer = forwardRef(function VideoPlayer(
     );
 
     // made only once the video plays, so drawing it never slows the start
-    const [board, making, problem] = useStoryboard(
-        // one picture per part would not line up with the whole video's bar
-        grouped ? NO_RECORD : record,
-        // a converted video is drawn from the bytes already in this tab
-        () => (local ? src : streamUrl(record, { quiet: true })),
-        started,
-    );
+    const [board, making, problem, rebuildStoryboard, storyboardResult] =
+        useStoryboard(
+            // one picture per part would not line up with the whole video's bar
+            grouped ? NO_RECORD : record,
+            // a converted video is drawn from the bytes already in this tab
+            () => (local ? src : streamUrl(record, { quiet: true })),
+            started,
+        );
+    useEffect(() => {
+        onPlayback?.({
+            id: record.id,
+            active: started && !paused && !waiting && !ended && !error,
+        });
+    }, [onPlayback, record.id, started, paused, waiting, ended, error]);
     // paused for a moment part-way through: the same grid offers other places
     // to go on from. Not at once, so a quick pause does not flash it, and it
     // goes when the video is moved (seek, arrow keys) or "Ẩn" is pressed.
@@ -917,13 +925,13 @@ const VideoPlayer = forwardRef(function VideoPlayer(
         },
         onCanPlay: live(() => setWaiting(false)),
         onWaiting: live(() => setWaiting(true)),
+        onStalled: live(() => setWaiting(true)),
         onPlaying: live(() => {
             setWaiting(false);
             setStarted(true);
         }),
         onPlay: live(() => {
             setPaused(false);
-            setStarted(true);
             poke();
         }),
         onPause: live(() => {
@@ -1236,6 +1244,49 @@ const VideoPlayer = forwardRef(function VideoPlayer(
                 >
                     <PlayArrowIcon sx={{ fontSize: 48 }} />
                 </IconButton>
+            )}
+
+            {!grouped && (started || board || problem) && (
+                <Stack
+                    direction="row"
+                    alignItems="center"
+                    spacing={1}
+                    sx={{
+                        position: "absolute",
+                        top: notice ? 78 : 24,
+                        left: 16,
+                        opacity: controlsVisible ? 1 : 0,
+                        transition: "opacity .2s",
+                        pointerEvents: controlsVisible ? "auto" : "none",
+                    }}
+                >
+                    <Button
+                        size="small"
+                        onClick={rebuildStoryboard}
+                        tabIndex={controlsVisible ? 0 : -1}
+                        disabled={making}
+                        startIcon={
+                            making ? (
+                                <CircularProgress size={14} />
+                            ) : (
+                                <ReplayIcon />
+                            )
+                        }
+                        sx={{ color: "#3ea6ff", bgcolor: "rgba(0,0,0,.7)" }}
+                    >
+                        {making
+                            ? "Đang tạo ảnh xem trước…"
+                            : "Tạo lại ảnh xem trước"}
+                    </Button>
+                    {storyboardResult && (
+                        <Typography
+                            role="status"
+                            sx={{ ...white, fontSize: 14 }}
+                        >
+                            {storyboardResult}
+                        </Typography>
+                    )}
+                </Stack>
             )}
 
             {notice && (
@@ -1633,6 +1684,7 @@ VideoPlayer.propTypes = {
     onDownload: PropTypes.func,
     // open the video in a player on this computer; absent when not offered
     onExternal: PropTypes.func,
+    onPlayback: PropTypes.func,
     // the records of one video cut into parts, in order, and which one was
     // opened; without them the player plays `record` alone
     parts: PropTypes.array,

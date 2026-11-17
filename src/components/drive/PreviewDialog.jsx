@@ -44,6 +44,14 @@ import { canStream, streamOffReason, streamUrl } from "../../services/stream";
 import { EXTERNAL_PLAYER, LOCAL_HELPER } from "../../config/features";
 import { partChain } from "../../utils/partGroup";
 import VideoPlayer from "./VideoPlayer";
+import { prefetch } from "../../services/storyboard";
+import {
+    answerPrefetch,
+    prefetchDecision,
+    prefetchNeighbours,
+} from "../../services/storyboardPrefetch";
+import { uploadScope } from "../../services/uploadLog";
+import { onClientChange } from "../../services/telegram";
 
 // GramJS buffers the whole file in memory, so the preview stays within what a
 // tab can comfortably hold; anything larger is offered as a download instead.
@@ -163,6 +171,10 @@ export default function PreviewDialog({
     const [converting, setConverting] = useState(undefined);
     const [info, setInfo] = useState(false);
     const [playing, setPlaying] = useState(false);
+    const [playback, setPlayback] = useState(null);
+    const [prefetchPrompt, setPrefetchPrompt] = useState(null);
+    const [, refreshConsent] = useState(0);
+    const attempted = useRef(new Set());
     const [fullscreen, setFullscreen] = useState(false);
     const [copied, setCopied] = useState(null);
     const viewer = useRef(null);
@@ -276,6 +288,94 @@ export default function PreviewDialog({
                 loadPreview(near, nearKind, { quiet: true }).catch(() => {});
         }
     }, [state.status, isImage, next, prev]);
+
+    const scope = uploadScope();
+    const groupedVideo = Boolean(group);
+    const activeVideo = playback?.id === item?.id && playback?.active;
+    const decision = prefetchDecision({
+        started: activeVideo,
+        streaming,
+        grouped: groupedVideo,
+        neighbours: [prevVideo, nextVideo],
+        siblings,
+        connection: navigator.connection,
+    });
+    const neighbours = useRef(decision.records);
+    neighbours.current = decision.records;
+    useEffect(() => {
+        attempted.current = new Set();
+        setPrefetchPrompt(null);
+    }, [item?.id, scope]);
+    useEffect(() => {
+        // Keep an unanswered prompt visible through pauses, rather than asking again.
+        if (decision.ask) setPrefetchPrompt(item?.id);
+    }, [decision.ask, item?.id]);
+    useEffect(() => {
+        const connection = navigator.connection;
+        const changed = () => refreshConsent((value) => value + 1);
+        connection?.addEventListener?.("change", changed);
+        return () => connection?.removeEventListener?.("change", changed);
+    }, []);
+    useEffect(() => {
+        if (
+            !activeVideo ||
+            !streaming ||
+            groupedVideo ||
+            decision.ask ||
+            !scope
+        )
+            return undefined;
+        const controller = new AbortController();
+        // Also cancel the delay on logout, before any media job has started.
+        const unsubscribe = onClientChange((client) => {
+            if (!client || uploadScope() !== scope) controller.abort();
+        });
+        const timer = setInterval(() => {
+            if (uploadScope() !== scope) controller.abort();
+        }, 250);
+        prefetchNeighbours(
+            neighbours.current,
+            (record, options) => {
+                // Trash/conversion/group changes during the delay must still skip.
+                const latest = neighbours.current.find(
+                    (r) => r.id === record.id,
+                );
+                if (!latest) return undefined;
+                return prefetch(
+                    latest,
+                    () => streamUrl(latest, { quiet: true }),
+                    {
+                        ...options,
+                        scope,
+                        canStart: () =>
+                            neighbours.current.some((r) => r.id === latest.id),
+                    },
+                );
+            },
+            { signal: controller.signal, attempted: attempted.current },
+        ).catch(console.log);
+        return () => {
+            controller.abort();
+            clearInterval(timer);
+            unsubscribe();
+        };
+        // Read current neighbour records without restarting jobs on storyboard publication.
+    }, [
+        item?.id,
+        activeVideo,
+        streaming,
+        groupedVideo,
+        decision.ask,
+        scope,
+        prevVideo?.id,
+        nextVideo?.id,
+    ]);
+
+    function consentPrefetch(allowed) {
+        answerPrefetch(allowed);
+        setPrefetchPrompt(null);
+        refreshConsent((value) => value + 1);
+    }
 
     // a slideshow moves on once a picture has been up for a while, and stops
     // at the last one or at anything that is not a picture
@@ -532,6 +632,7 @@ export default function PreviewDialog({
                             src={state.url}
                             // not streamed: already whole in this tab
                             local={convert}
+                            onPlayback={setPlayback}
                             poster={placeholder}
                             next={nextVideo}
                             onNext={nextVideo && (() => onNavigate(nextVideo))}
@@ -839,6 +940,44 @@ export default function PreviewDialog({
                             }
                         >
                             {body()}
+                            {item && prefetchPrompt === item.id && (
+                                <Stack
+                                    role="region"
+                                    aria-label="Tạo trước ảnh xem trước"
+                                    spacing={1}
+                                    sx={{
+                                        position: "absolute",
+                                        top: 16,
+                                        bgcolor: "#303134",
+                                        color: "#fff",
+                                        p: 2,
+                                        borderRadius: 1,
+                                        maxWidth: 360,
+                                        zIndex: 2,
+                                    }}
+                                >
+                                    <Typography>
+                                        Bạn đang dùng dữ liệu di động. Tạo trước
+                                        ảnh xem trước cho video kế bên?
+                                    </Typography>
+                                    <Stack direction="row" spacing={1}>
+                                        <Button
+                                            onClick={() =>
+                                                consentPrefetch(true)
+                                            }
+                                        >
+                                            Có
+                                        </Button>
+                                        <Button
+                                            onClick={() =>
+                                                consentPrefetch(false)
+                                            }
+                                        >
+                                            Không
+                                        </Button>
+                                    </Stack>
+                                </Stack>
+                            )}
                             {prev && (
                                 <IconButton
                                     onClick={() => onNavigate(prev)}

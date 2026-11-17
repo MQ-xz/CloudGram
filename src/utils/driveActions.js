@@ -484,7 +484,27 @@ export async function deleteForever(ids, { withLinks = false } = {}) {
     storyboardsOf(
         records.filter((r) => recordIds.has(r.id)),
         messageIds,
-    ).forEach((x) => messageIds.add(x));
+    )
+        .filter(
+            (message) =>
+                !records.some(
+                    (r) =>
+                        !recordIds.has(r.id) &&
+                        r.storyboard?.message === message,
+                ),
+        )
+        .forEach((x) => messageIds.add(x));
+    // Override covers survive until their last referencing record goes.
+    for (const r of records)
+        if (
+            recordIds.has(r.id) &&
+            r.thumbnail &&
+            !records.some(
+                (other) =>
+                    !recordIds.has(other.id) && other.thumbnail === r.thumbnail,
+            )
+        )
+            messageIds.add(r.thumbnail);
     if (messageIds.size) {
         await getClient().deleteMessages("me", [...messageIds], {
             revoke: true,

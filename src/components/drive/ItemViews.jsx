@@ -219,7 +219,10 @@ const ListRow = memo(function ListRow({
         >
             <TableCell sx={{ maxWidth: 0, width: "50%" }}>
                 <Stack direction="row" spacing={2} alignItems="center">
-                    <FileIcon record={item} />
+                    <Thumbnail
+                        item={item}
+                        onContextMenu={props.onContextMenu}
+                    />
                     <Typography
                         noWrap
                         variant="body2"
@@ -474,17 +477,61 @@ function useSeen() {
     return [ref, seen];
 }
 
-const FileCard = memo(function FileCard({ item, index, selected, props }) {
+/** Missing/failed covers open the same menu, including regeneration. */
+function Thumbnail({ item, onContextMenu, large = false }) {
     const [ref, seen] = useSeen();
     const kind = kindOf(item);
-    const thumb = useThumbnail(
-        item,
-        kind === "image" || kind === "video",
-        seen,
-    );
+    const wanted = kind === "image" || kind === "video";
+    const thumb = useThumbnail(item, wanted, seen);
+    const [failed, setFailed] = useState(null);
     return (
         <Box
             ref={ref}
+            sx={{
+                display: "grid",
+                placeItems: "center",
+                width: large ? "100%" : 24,
+                height: large ? "100%" : 24,
+            }}
+        >
+            {thumb && thumb !== failed ? (
+                <Box
+                    component="img"
+                    src={thumb}
+                    alt=""
+                    draggable={false}
+                    onError={() => setFailed(thumb)}
+                    sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+            ) : wanted && item.file_id != null && !item.trashedAt ? (
+                <Tooltip title="Tạo lại hình thu nhỏ">
+                    <IconButton
+                        aria-label="Tạo lại hình thu nhỏ"
+                        onKeyDown={(e) => e.stopPropagation()}
+                        onDoubleClick={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onContextMenu(e, item, "thumbnail");
+                        }}
+                    >
+                        <FileIcon record={item} size={large ? 64 : 24} />
+                    </IconButton>
+                </Tooltip>
+            ) : (
+                <FileIcon record={item} size={large ? 56 : 24} />
+            )}
+        </Box>
+    );
+}
+Thumbnail.propTypes = {
+    item: PropTypes.object.isRequired,
+    onContextMenu: PropTypes.func.isRequired,
+    large: PropTypes.bool,
+};
+
+const FileCard = memo(function FileCard({ item, index, selected, props }) {
+    return (
+        <Box
             {...itemHandlers(item, index, props)}
             sx={{
                 borderRadius: 3,
@@ -540,21 +587,11 @@ const FileCard = memo(function FileCard({ item, index, selected, props }) {
                     overflow: "hidden",
                 }}
             >
-                {thumb ? (
-                    <Box
-                        component="img"
-                        src={thumb}
-                        alt=""
-                        draggable={false}
-                        sx={{
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "cover",
-                        }}
-                    />
-                ) : (
-                    <FileIcon record={item} size={kind === "other" ? 56 : 64} />
-                )}
+                <Thumbnail
+                    item={item}
+                    onContextMenu={props.onContextMenu}
+                    large
+                />
                 <Stack
                     direction="row"
                     spacing={0.5}

@@ -102,7 +102,7 @@ async function decode(blob, type) {
 }
 
 /** Draw an image or video frame at most SIZE px a side, as a JPEG blob. */
-function encodeScaled(source, width, height) {
+export function encodeScaled(source, width, height) {
     const scale = Math.min(1, SIZE / Math.max(width, height));
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.round(width * scale));
@@ -119,7 +119,7 @@ function encodeScaled(source, width, height) {
     );
 }
 
-async function shrink(blob, type) {
+export async function shrink(blob, type) {
     const bitmap = await decode(blob, type);
     try {
         return await encodeScaled(bitmap, bitmap.width, bitmap.height);
@@ -239,8 +239,32 @@ export async function makeThumb(file) {
 // A failure is never kept here: it is tried again. Kept for the life of the
 // tab; a few hundred 320px JPEGs is a few MB.
 const cache = new Map();
+const pointers = new Map();
 // record key -> { key, record, attempts, promise, resolve }
 const pending = new Map();
+const listeners = new Set();
+const held = new Map();
+/** Keep the visible cover unchanged while its replacement tree is saving. */
+export function holdThumbnails(records) {
+    for (const record of records) held.set(keyOf(record), record);
+    return () => {
+        for (const record of records)
+            if (held.get(keyOf(record)) === record) held.delete(keyOf(record));
+    };
+}
+export function evictThumbnails(records) {
+    for (const record of records) {
+        const key = keyOf(record);
+        const url = cache.get(key);
+        if (url) URL.revokeObjectURL(url);
+        cache.delete(key);
+        pointers.delete(key);
+        const entry = pending.get(key);
+        pending.delete(key);
+        entry?.resolve(null);
+    }
+    for (const listener of listeners) listener();
+}
 let waiting = [];
 let timer = null;
 let draining = false;
@@ -259,7 +283,7 @@ function pickSize(thumbs) {
 const keyOf = (record) => `${record.id}:${record.file_id}`;
 
 /** The thumbnail in an already fetched message, or null when it has none. */
-async function thumbFrom(message, record) {
+async function thumbFrom(message, record, client) {
     const media = message?.media;
     // a file sent as a photo carries its own scaled copies instead of thumbs
     const doc = media?.document;
@@ -268,7 +292,7 @@ async function thumbFrom(message, record) {
 
     const size = pickSize(sizes);
     if (size) {
-        const bytes = await getClient().downloadMedia(media, { thumb: size });
+        const bytes = await client.downloadMedia(media, { thumb: size });
         if (bytes?.length) {
             return new Blob([bytes], { type: "image/jpeg" });
         }
@@ -283,7 +307,7 @@ async function thumbFrom(message, record) {
         isImageType(type) &&
         Number(doc.size?.value ?? doc.size) <= FALLBACK_LIMIT
     ) {
-        const bytes = await getClient().downloadMedia(media, {});
+        const bytes = await client.downloadMedia(media, {});
         // a picture this browser cannot decode will not decode on a retry
         // either, and each retry would download the whole file again
         return shrink(new Blob([bytes], { type }), type).catch(() => null);
@@ -292,8 +316,10 @@ async function thumbFrom(message, record) {
 }
 
 function settle(entry, blob) {
+    if (pending.get(entry.key) !== entry) return;
     const url = blob ? URL.createObjectURL(blob) : null;
     cache.set(entry.key, url);
+    pointers.set(entry.key, entry.record.thumbnail);
     pending.delete(entry.key);
     entry.resolve(url);
 }
@@ -305,6 +331,7 @@ function settle(entry, blob) {
  * card again later starts over.
  */
 function retry(entry, error) {
+    if (pending.get(entry.key) !== entry) return;
     // a wait Telegram asked for is not a failure of this thumbnail
     const counts = isOnline() && !error?.seconds;
     if (counts && entry.attempts >= RETRY_DELAYS.length) {
@@ -325,10 +352,11 @@ function retry(entry, error) {
 
 /** Several messages in one request, then their thumbnails a few at a time. */
 async function fetchBatch(entries) {
+    const client = getClient();
     let messages;
     try {
-        messages = await getClient().getMessages("me", {
-            ids: entries.map((e) => e.record.file_id),
+        messages = await client.getMessages("me", {
+            ids: entries.map((e) => e.record.thumbnail ?? e.record.file_id),
         });
     } catch (error) {
         entries.forEach((entry) => retry(entry, error));
@@ -343,14 +371,23 @@ async function fetchBatch(entries) {
         Array.from({ length: CONCURRENCY }, async () => {
             while (next < entries.length) {
                 const entry = entries[next++];
+                if (pending.get(entry.key) !== entry) continue;
                 // scrolled out of sight since it was asked for
                 if (entry.cancelled) {
                     pending.delete(entry.key);
                     continue;
                 }
                 try {
-                    const message = byId.get(entry.record.file_id);
-                    settle(entry, await thumbFrom(message, entry.record));
+                    const message = byId.get(
+                        entry.record.thumbnail ?? entry.record.file_id,
+                    );
+                    const blob = entry.record.thumbnail
+                        ? new Blob(
+                              [await client.downloadMedia(message.media, {})],
+                              { type: "image/jpeg" },
+                          )
+                        : await thumbFrom(message, entry.record, client);
+                    settle(entry, blob);
                 } catch (error) {
                     retry(entry, error);
                 }
@@ -384,6 +421,10 @@ function schedule() {
 onClientChange((client) => {
     if (client) return schedule();
     // a sign-out: these message ids mean nothing to the next account
+    for (const url of cache.values()) if (url) URL.revokeObjectURL(url);
+    cache.clear();
+    pointers.clear();
+    held.clear();
     waiting.length = 0;
     for (const entry of pending.values()) entry.resolve(null);
     pending.clear();
@@ -405,6 +446,13 @@ function dropThumb(record) {
 
 function loadThumb(record) {
     const key = keyOf(record);
+    record = held.get(key) ?? record;
+    if (
+        (pointers.has(key) && pointers.get(key) !== record.thumbnail) ||
+        (pending.has(key) &&
+            pending.get(key).record.thumbnail !== record.thumbnail)
+    )
+        evictThumbnails([record]);
     if (cache.has(key)) return Promise.resolve(cache.get(key));
     if (pending.has(key)) pending.get(key).cancelled = false;
     if (!pending.has(key)) {
@@ -425,6 +473,12 @@ function loadThumb(record) {
  * upload has finished.
  */
 export function useThumbnail(record, wanted, visible) {
+    const [revision, refresh] = useState(0);
+    useEffect(() => {
+        const changed = () => refresh((n) => n + 1);
+        listeners.add(changed);
+        return () => listeners.delete(changed);
+    }, []);
     const ready = wanted && record.file_id != null;
     const [url, setUrl] = useState(() =>
         ready ? cache.get(keyOf(record)) ?? null : null,
@@ -441,7 +495,7 @@ export function useThumbnail(record, wanted, visible) {
         // a new file_id means a fresh upload; the record object itself changes
         // on every rename or star and must not refetch
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [record.id, record.file_id, ready, visible]);
+    }, [record.id, record.file_id, record.thumbnail, ready, visible, revision]);
 
     return ready ? url : null;
 }
