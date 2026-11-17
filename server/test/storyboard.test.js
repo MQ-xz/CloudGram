@@ -180,6 +180,98 @@ test("partial frames rejected before upload", async () => {
     assert.equal(h.stats().sent, 0);
 });
 
+test("progress reaches 81 frames, then uploads and saves", async () => {
+    const h = await harness();
+    const progress = [];
+    await h.make(1, () => "stream", { onProgress: (p) => progress.push(p) });
+    assert.deepEqual(
+        progress.filter((p) => p.phase === "drawing").map((p) => p.done),
+        Array.from({ length: 82 }, (_, i) => i),
+    );
+    assert.deepEqual(
+        [...new Set(progress.map((p) => p.phase))],
+        ["drawing", "uploading", "saving"],
+    );
+    assert.ok(progress.every((p) => p.total === 81 && p.attempt === 1));
+});
+
+test("retry reports next attempt and resets frame progress", async () => {
+    let uploads = 0;
+    const h = await harness({
+        upload: async () => {
+            if (++uploads === 1) throw new Error("network");
+            return {};
+        },
+    });
+    const progress = [];
+    await h.regenerate(h.records[0], () => "stream", {
+        retryDelays: [0, 0],
+        onProgress: (p) => progress.push(p),
+    });
+    const retry = progress.findIndex((p) => p.phase === "retrying");
+    assert.equal(progress[retry - 1].done, 81);
+    assert.equal(progress[retry].done, 0);
+    assert.equal(progress[retry].attempt, 2);
+    assert.equal(progress[retry + 1].phase, "drawing");
+    assert.equal(progress[retry + 1].done, 0);
+    assert.equal(progress.at(-1).attempt, 2);
+});
+
+test("queued job reports waiting; dedup listeners share live progress", async () => {
+    const h = await harness();
+    h.records.push({ id: "c", file_id: 2 });
+    const first = h.make(1, () => "stream");
+    const progress = [];
+    const duplicate = [];
+    const second = h.make(2, () => "stream", {
+        onProgress: (p) => progress.push(p),
+    });
+    const joined = h.make(2, () => "unused", {
+        onProgress: (p) => duplicate.push(p),
+    });
+    assert.equal(second, joined);
+    assert.equal(progress[0].phase, "waiting");
+    await Promise.all([first, second]);
+    assert.deepEqual(duplicate, progress);
+    assert.equal(progress.at(-1).phase, "saving");
+    assert.equal(h.stats().draws, 2);
+});
+
+test("listener joining during drawing receives current frame and later phases", async () => {
+    const h = await harness();
+    const progress = [];
+    let joined;
+    const job = h.make(1, () => "stream", {
+        onProgress: (p) => {
+            if (p.phase === "drawing" && p.done === 35)
+                joined = h.make(1, () => "unused", {
+                    onProgress: (next) => progress.push(next),
+                });
+        },
+    });
+    await job;
+    assert.equal(joined, job);
+    assert.equal(progress[0].done, 35);
+    assert.ok(progress.some((p) => p.phase === "drawing" && p.done === 81));
+    assert.equal(progress.at(-1).phase, "saving");
+    assert.equal(h.stats().draws, 1);
+});
+
+test("omitting progress callback preserves result and side effects", async () => {
+    const plain = await harness();
+    const observed = await harness();
+    const a = await plain.make(1, () => "stream");
+    const b = await observed.make(1, () => "stream", { onProgress() {} });
+    assert.equal(a.message, b.message);
+    assert.equal(a.duration, b.duration);
+    assert.deepEqual(plain.stats(), observed.stats());
+    // VM objects have separate prototypes; compare the persisted record data.
+    assert.equal(
+        JSON.stringify(plain.records),
+        JSON.stringify(observed.records),
+    );
+});
+
 test("blank frames rejected; dark opening passes", async () => {
     const blank = await harness({ black: true });
     await assert.rejects(
@@ -533,6 +625,38 @@ function hookRunner() {
 }
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 
+test("automatic current-video generation keeps progress through tree publication", async () => {
+    const runner = hookRunner();
+    let finish;
+    let began;
+    const started = new Promise((resolve) => {
+        began = resolve;
+    });
+    const saving = new Promise((resolve) => {
+        finish = resolve;
+    });
+    const h = await harness({
+        react: runner.react,
+        flush: () => {
+            began();
+            return saving;
+        },
+    });
+    runner.render(h, h.records[0]);
+    await started;
+    const during = runner.render(h, h.records[0]);
+    assert.equal(during[1], true);
+    assert.equal(during[5].phase, "saving");
+    assert.equal(during[5].done, 81);
+    finish();
+    await tick();
+    await tick();
+    const after = runner.render(h, h.records[0]);
+    assert.equal(after[1], false);
+    assert.ok(after[0]);
+    runner.close();
+});
+
 for (const fail of [false, true])
     test(`player keeps old board during rebuild; failure=${fail}`, async () => {
         const runner = hookRunner();
@@ -565,6 +689,7 @@ for (const fail of [false, true])
         const during = runner.render(h, h.records[0]);
         assert.equal(during[0], before[0]);
         assert.equal(during[1], true);
+        assert.equal(during[5].phase, "saving");
         finish();
         await rebuilding;
         await tick();
