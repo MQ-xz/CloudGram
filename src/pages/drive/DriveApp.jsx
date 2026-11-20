@@ -279,7 +279,11 @@ export default function DriveApp({ mode, onToggleMode }) {
             case "recent":
                 list = records
                     .filter((r) => r.type === "file" && !isHidden(byId, r))
-                    .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
+                    .sort(
+                        (a, b) =>
+                            (b.modifiedAt ?? b.updatedAt ?? 0) -
+                            (a.modifiedAt ?? a.updatedAt ?? 0),
+                    )
                     .slice(0, 100);
                 break;
             case "starred":
@@ -317,14 +321,15 @@ export default function DriveApp({ mode, onToggleMode }) {
         if (view.kind === "recent") return list;
 
         const dir = sort.dir === "asc" ? 1 : -1;
-        const dateKey = inTrash ? "trashedAt" : "updatedAt";
+        const dateOf = (record) =>
+            inTrash ? record.trashedAt : record.modifiedAt ?? record.updatedAt;
         return [...list].sort((a, b) => {
             // folders first, whatever the sort
             if (a.type !== b.type) return a.type === "folder" ? -1 : 1;
             if (sort.key === "size")
                 return ((a.size ?? 0) - (b.size ?? 0)) * dir;
             if (sort.key === "updatedAt")
-                return ((a[dateKey] ?? 0) - (b[dateKey] ?? 0)) * dir;
+                return ((dateOf(a) ?? 0) - (dateOf(b) ?? 0)) * dir;
             return byName.compare(a.name, b.name) * dir;
         });
     }, [

@@ -410,7 +410,8 @@ function make(fileId, src, options = {}) {
             }));
             // every record of this video shares it
             phase("saving", FRAMES);
-            for (const r of records) update(r.id, { storyboard });
+            for (const r of records)
+                update(r.id, { storyboard }, { preserveModifiedAt: true });
             try {
                 await flush();
                 op.assert();
@@ -421,7 +422,11 @@ function make(fileId, src, options = {}) {
                             getRecord(r.id)?.storyboard?.message ===
                             storyboard.message
                         )
-                            update(r.id, { storyboard: r.storyboard });
+                            update(
+                                r.id,
+                                { storyboard: r.storyboard },
+                                { preserveModifiedAt: true },
+                            );
                     // A save may already have reached the server: retain both messages.
                 }
                 throw error;

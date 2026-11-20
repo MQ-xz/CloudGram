@@ -284,7 +284,12 @@ export function regenerateThumbnail(record, options = {}) {
                 thumbnail: r.thumbnail,
             }));
             const release = holdThumbnails(records);
-            for (const r of records) update(r.id, { thumbnail: message });
+            for (const r of records)
+                update(
+                    r.id,
+                    { thumbnail: message },
+                    { preserveModifiedAt: true },
+                );
             try {
                 await flush();
                 op.assert();
@@ -292,7 +297,11 @@ export function regenerateThumbnail(record, options = {}) {
                 if (uploadScope() === s.scope)
                     for (const r of old)
                         if (getRecord(r.id)?.thumbnail === message)
-                            update(r.id, { thumbnail: r.thumbnail });
+                            update(
+                                r.id,
+                                { thumbnail: r.thumbnail },
+                                { preserveModifiedAt: true },
+                            );
                 // A save may already have reached the server: retain both messages.
                 throw error;
             } finally {

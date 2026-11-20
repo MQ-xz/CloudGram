@@ -27,6 +27,7 @@ async function harness({
     let scope = {};
     let clientChanged;
     const deleted = [];
+    const updateOptions = [];
     const evicted = [];
     const captured = [];
     const delays = [];
@@ -140,7 +141,8 @@ async function harness({
             uploadScope: () => scope,
             getRecord: (id) => records.find((r) => r.id === id),
             getSnapshot: () => ({ records }),
-            update(id, patch) {
+            update(id, patch, options) {
+                updateOptions.push(options);
                 Object.assign(
                     records.find((r) => r.id === id),
                     patch,
@@ -155,6 +157,7 @@ async function harness({
         ...mod,
         records,
         deleted,
+        updateOptions,
         evicted,
         captured,
         delays,
@@ -190,6 +193,12 @@ for (const referenced of [true, false])
         const h = await harness();
         if (referenced) h.records.push({ id: "c", file_id: 2, thumbnail: 50 });
         await make(h);
+        assert.ok(h.updateOptions.length > 0);
+        assert.ok(
+            h.updateOptions.every(
+                (option) => option?.preserveModifiedAt === true,
+            ),
+        );
         assert.ok(
             h.records
                 .filter((r) => r.file_id === 1)

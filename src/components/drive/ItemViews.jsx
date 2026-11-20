@@ -262,7 +262,7 @@ const ListRow = memo(function ListRow({
                     {formatDate(
                         props.dateField === "trashedAt"
                             ? item.trashedAt
-                            : item.updatedAt,
+                            : item.modifiedAt ?? item.updatedAt,
                     )}
                 </Typography>
             </TableCell>
@@ -397,12 +397,7 @@ ItemList.propTypes = {
 
 // ----- grid ----------------------------------------------------------------------
 
-const FolderCard = memo(function FolderCard({
-    item,
-    index,
-    selected,
-    props,
-}) {
+const FolderCard = memo(function FolderCard({ item, index, selected, props }) {
     const [dropProps, over] = useDropTarget(item, props.onDropOnFolder);
     return (
         <Stack
@@ -617,7 +612,7 @@ const FileCard = memo(function FileCard({ item, index, selected, props }) {
                 {formatDate(
                     props.dateField === "trashedAt"
                         ? item.trashedAt
-                        : item.updatedAt,
+                        : item.modifiedAt ?? item.updatedAt,
                 )}
             </Typography>
             {item.labels?.length > 0 && (

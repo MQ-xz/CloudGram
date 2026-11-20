@@ -144,7 +144,9 @@ export default function DetailsPanel({ items, folderName, onClose }) {
                         )}
                         <Row
                             label="Sửa đổi"
-                            value={formatDateTime(single.updatedAt)}
+                            value={formatDateTime(
+                                single.modifiedAt ?? single.updatedAt,
+                            )}
                         />
                         <Row
                             label="Ngày tạo"

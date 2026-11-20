@@ -9,7 +9,7 @@
  *
  *     { id, type: "folder" | "file", name, parent: id | null,
  *       file_id?, size?, mime?, starred?, labels?: [label id],
- *       trashedAt?, createdAt, updatedAt }
+ *       trashedAt?, createdAt, updatedAt, modifiedAt? }
  *
  * A label is a record of its own, { id, type: "label", name, createdAt,
  * updatedAt }, kept apart from the files and folders in the snapshot.
@@ -248,10 +248,14 @@ async function push() {
 
 // ----- mutations ------------------------------------------------------------------
 
-function put(record) {
+function put(record, { preserveModifiedAt = false } = {}) {
+    const now = Date.now();
     records.set(record.id, {
         ...record,
-        updatedAt: Math.max(Date.now(), (record.updatedAt ?? 0) + 1),
+        modifiedAt: preserveModifiedAt
+            ? record.modifiedAt ?? record.updatedAt
+            : now,
+        updatedAt: Math.max(now, (record.updatedAt ?? 0) + 1),
     });
 }
 
@@ -338,10 +342,14 @@ export function linkFile(source, parent, name) {
     return record;
 }
 
-export function update(id, changes, { immediate = false } = {}) {
+export function update(
+    id,
+    changes,
+    { immediate = false, preserveModifiedAt = false } = {},
+) {
     const record = getRecord(id);
     if (!record) return undefined;
-    put({ ...record, ...changes });
+    put({ ...record, ...changes }, { preserveModifiedAt });
     markDirty(immediate);
     return records.get(id);
 }
@@ -353,7 +361,7 @@ export function rename(id, name) {
 export function setStarred(ids, starred) {
     for (const id of ids) {
         const record = getRecord(id);
-        if (record) put({ ...record, starred });
+        if (record) put({ ...record, starred }, { preserveModifiedAt: true });
     }
     markDirty();
 }
@@ -437,7 +445,10 @@ export function setLabel(ids, labelId, on) {
         const labels = on
             ? [...have, labelId]
             : have.filter((l) => l !== labelId);
-        put({ ...record, labels: labels.length ? labels : undefined });
+        put(
+            { ...record, labels: labels.length ? labels : undefined },
+            { preserveModifiedAt: true },
+        );
         changed = true;
     }
     if (changed) markDirty();

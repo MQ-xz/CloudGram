@@ -32,6 +32,7 @@ async function harness({
     let scope = {};
     let clientChanged;
     const deleted = [];
+    const updateOptions = [];
     const delays = [];
     const client = {
         sendFile: async () => ({ id: ++sent + 100 }),
@@ -141,7 +142,8 @@ async function harness({
             uploadScope: () => scope,
             getRecord: (id) => records.find((r) => r.id === id),
             getSnapshot: () => ({ records }),
-            update(id, patch) {
+            update(id, patch, options) {
+                updateOptions.push(options);
                 Object.assign(
                     records.find((r) => r.id === id),
                     patch,
@@ -161,6 +163,7 @@ async function harness({
         ...mod,
         records,
         deleted,
+        updateOptions,
         delays,
         client,
         clientChanged: (...args) => clientChanged(...args),
@@ -184,6 +187,10 @@ test("progress reaches 81 frames, then uploads and saves", async () => {
     const h = await harness();
     const progress = [];
     await h.make(1, () => "stream", { onProgress: (p) => progress.push(p) });
+    assert.ok(h.updateOptions.length > 0);
+    assert.ok(
+        h.updateOptions.every((option) => option?.preserveModifiedAt === true),
+    );
     assert.deepEqual(
         progress.filter((p) => p.phase === "drawing").map((p) => p.done),
         Array.from({ length: 82 }, (_, i) => i),
