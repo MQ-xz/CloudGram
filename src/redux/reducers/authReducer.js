@@ -12,6 +12,8 @@ export default function reducer(
         error: null,
         hasLegacy: false,
         setupToken: null,
+        quick: false,
+        via: null,
     },
     action,
 ) {

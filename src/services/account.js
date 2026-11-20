@@ -20,10 +20,14 @@ import {
     encryptJson,
     makeRecovery,
     newKdf,
+    newQuickKey,
     normalizeRecoveryCode,
+    quickSecrets,
     rewrapDek,
     unwrapDek,
 } from "./crypto";
+import { deleteQuickKeys, findQuickKeys, saveQuickKey } from "./quickKey";
+import { withTimeout } from "./quickLoginError";
 import {
     closeDrive,
     flush,
@@ -57,8 +61,22 @@ let account = null;
 let heartbeat = null;
 let leaseGrantedAt = 0;
 let leasePoll = null;
+let quickClient = null;
 
 const set = (state) => Store.dispatch(setAuth(state));
+
+async function closeQuickClient() {
+    const temporary = quickClient;
+    quickClient = null;
+    if (!temporary) return;
+    try {
+        await temporary.invoke(new Api.auth.LogOut());
+    } catch {
+        set({ notice: "Không thể đăng xuất phiên Telegram tạm." });
+    } finally {
+        await temporary.disconnect().catch(() => {});
+    }
+}
 
 // ----- start-up ---------------------------------------------------------------------
 
@@ -75,6 +93,7 @@ export async function boot() {
     set({ phase: "loading" });
     try {
         account = await api.me();
+        set({ quick: account.quick, via: account.via });
     } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
             set({ phase: "signedOut" });
@@ -98,13 +117,138 @@ export async function login(username, password, remember) {
     const { loginKey, kek } = await deriveKeys(password, kdf);
     account = await api.login({ username, loginKey, remember });
     const key = await unwrapDek(kek, account.wrappedDek);
+    await loginSuccess(key, remember);
+}
+
+async function loginSuccess(key, remember) {
     if (remember) await saveKey(account.username, key);
     else await clearKey();
+    const current = await api.me();
+    account = current;
+    set({ quick: current.quick, via: current.via });
     await enter(key);
+}
+
+export async function enableQuick(password) {
+    if (!dek || !account) throw new Error("Vault is locked");
+    const client = getClient();
+    if (client.connected === false)
+        throw new Error("Telegram is not connected");
+    const current = await api.me();
+    if (current.via === "quick") throw new ApiError(403, "password_required");
+    const { kdf } = await api.prelogin(current.username);
+    const { loginKey, kek } = await deriveKeys(password, kdf);
+    const q = newQuickKey();
+    const { proof, wrapKey } = await quickSecrets(q);
+    const wrappedDek = await rewrapDek(kek, current.wrappedDek, wrapKey);
+    const message = await saveQuickKey(client, current.username, q);
+    try {
+        await api.enableQuick({ loginKey, proof, wrappedDek });
+    } catch (error) {
+        try {
+            await client.deleteMessages("me", [message.id], { revoke: true });
+        } catch {
+            error.quickRollbackFailed = true;
+        }
+        throw error;
+    }
+    account = { ...current, quick: true };
+    set({ quick: true });
+}
+
+export async function disableQuick(password) {
+    if (!dek || !account) throw new Error("Vault is locked");
+    const current = await api.me();
+    const { kdf } = await api.prelogin(current.username);
+    const { loginKey } = await deriveKeys(password, kdf);
+    await api.disableQuick({ loginKey });
+    account = { ...current, quick: false };
+    set({ quick: false });
+    try {
+        await deleteQuickKeys(getClient(), current.username);
+        return { telegramDeleted: true };
+    } catch {
+        return { telegramDeleted: false };
+    }
+}
+
+export async function quickLogin(
+    client,
+    { remember = false, username, onStep = () => {} } = {},
+) {
+    onStep("findQuickKeys");
+    const keys = await withTimeout(
+        "findQuickKeys",
+        45000,
+        findQuickKeys(client),
+    );
+    const key = keys.find(
+        (item) => item.account === username?.trim().toLowerCase(),
+    );
+    if (!key) {
+        const unreadable = keys.failures?.length;
+        const error = new Error(
+            unreadable
+                ? keys.failures[0].detail
+                : `quick_key_not_found searched=${
+                      keys.stats?.searched ?? 0
+                  } scanned=${keys.stats?.scanned ?? 0} nameMatched=${
+                      keys.stats?.nameMatched ?? 0
+                  } skippedFwd=${keys.stats?.skippedFwd ?? 0} fallback=${
+                      keys.stats?.usedFallback ?? 0
+                  }`,
+        );
+        error.code = unreadable
+            ? "quick_key_unreadable"
+            : "quick_key_not_found";
+        error.step = "findQuickKeys";
+        throw error;
+    }
+    const { proof, wrapKey } = await quickSecrets(key.q);
+    onStep("api.quickLogin");
+    const controller = new AbortController();
+    let result;
+    try {
+        result = await withTimeout(
+            "api.quickLogin",
+            30000,
+            api.quickLogin(
+                { username: key.account, proof, remember },
+                controller.signal,
+            ),
+        );
+    } catch (error) {
+        controller.abort();
+        throw error;
+    }
+    try {
+        if (!result.hasTelegram) {
+            const error = new Error("quick_needs_password_link");
+            error.code = "quick_needs_password_link";
+            throw error;
+        }
+        onStep("openVault");
+        const opened = await unwrapDek(wrapKey, result.wrappedDek);
+        account = result;
+        quickClient = client;
+        onStep("enterTelegram");
+        await loginSuccess(opened, remember);
+    } catch (error) {
+        quickClient = null;
+        account = null;
+        try {
+            await withTimeout("logout", 5000, api.logout(browserId()));
+        } catch {
+            // The session may already be gone.
+        }
+        throw error;
+    }
 }
 
 /** Signed in (cookie still valid) but the key was not remembered on this device. */
 export async function unlock(password, remember) {
+    if (account.via === "quick")
+        return login(account.username, password, remember);
     const { kek } = await deriveKeys(password, account.kdf);
     let key;
     try {
@@ -161,7 +305,8 @@ export async function changePassword(oldPassword, newPassword) {
         kdf,
         wrappedDek,
     });
-    account = { ...current, kdf, wrappedDek };
+    account = { ...current, kdf, wrappedDek, quick: false };
+    set({ quick: false });
 }
 
 /**
@@ -242,6 +387,7 @@ export async function logout() {
     stopHeartbeat();
     clearInterval(leasePoll);
     await stopClient();
+    await closeQuickClient();
     try {
         await api.logout(browserId());
     } catch {
@@ -252,7 +398,15 @@ export async function logout() {
     await logClosed;
     dek = null;
     account = null;
-    set({ phase: "signedOut", username: null, me: null, notice: null });
+    quickClient = null;
+    set({
+        phase: "signedOut",
+        username: null,
+        me: null,
+        notice: null,
+        quick: false,
+        via: null,
+    });
 }
 
 // ----- after the DEK is open -------------------------------------------------------------
@@ -280,6 +434,7 @@ export async function acquireLease(takeover) {
     try {
         res = await api.lease(browserId(), takeover);
     } catch (error) {
+        await closeQuickClient();
         set({ phase: "error", error: describeError(error) });
         return;
     }
@@ -362,6 +517,7 @@ async function connectTelegram() {
     try {
         const { session } = await api.getSession();
         if (!session) {
+            await closeQuickClient();
             set({ phase: "link", hasLegacy: Boolean(await legacySession()) });
             return;
         }
@@ -373,6 +529,7 @@ async function connectTelegram() {
         const client = newClient(text);
         await client.connect();
         if (!(await client.isUserAuthorized())) {
+            await closeQuickClient();
             await client.destroy().catch(() => {});
             set({
                 phase: "link",
@@ -383,6 +540,7 @@ async function connectTelegram() {
         }
         setClient(client);
         set({ phase: "ready", me: await describeMe(client) });
+        await closeQuickClient();
     } catch (error) {
         console.log(error);
         set({
@@ -444,6 +602,7 @@ export async function adoptLegacySession() {
 
 /** End the Telegram session for good, on every device, and forget it. */
 export async function unlinkTelegram() {
+    if (account?.via === "quick") throw new ApiError(403, "password_required");
     if (hasClient()) {
         try {
             await getClient().invoke(new Api.auth.LogOut());

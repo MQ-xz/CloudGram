@@ -254,6 +254,12 @@ export default function TopBar({
                     )}
                 </Stack>
                 <Divider />
+                <MenuItem onClick={() => pick("quick")}>
+                    <ListItemIcon>
+                        <TelegramIcon fontSize="small" />
+                    </ListItemIcon>
+                    Đăng nhập nhanh bằng Telegram
+                </MenuItem>
                 <MenuItem onClick={() => pick("password")}>
                     <ListItemIcon>
                         <KeyIcon fontSize="small" />

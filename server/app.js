@@ -102,6 +102,16 @@ function requireKdf(value) {
     return { salt: value.salt, iterations };
 }
 
+function requireProof(value) {
+    if (
+        typeof value !== "string" ||
+        !/^[A-Za-z0-9_-]{43}$/.test(value) ||
+        Buffer.from(value, "base64url").toString("base64url") !== value
+    )
+        throw new HttpError(400, "bad_proof");
+    return value;
+}
+
 function requireLoginKey(value) {
     if (typeof value !== "string" || !hex64.test(value)) {
         throw new HttpError(400, "bad_login_key");
@@ -235,6 +245,7 @@ export class CloudGramApi {
             delete user.kdf;
             delete user.wrappedDek;
             delete user.recovery;
+            delete user.quick;
             delete user.session;
             await this.db.deleteTree(user.id);
             this.#dropSessions(name);
@@ -271,11 +282,12 @@ export class CloudGramApi {
 
     // ----- login sessions ---------------------------------------------------
 
-    async #startSession(res, username, remember, userAgent) {
+    async #startSession(res, username, remember, userAgent, via = "password") {
         const token = randomBytes(32).toString("base64url");
         const ttl = remember ? REMEMBER_TTL : SHORT_TTL;
         this.db.data.sessions[sha256(token)] = {
             username,
+            via,
             remember: Boolean(remember),
             createdAt: this.now(),
             expiresAt: this.now() + ttl,
@@ -324,7 +336,7 @@ export class CloudGramApi {
             await this.db.save();
             res.cookie(COOKIE, token, REMEMBER_TTL / 1000);
         }
-        return { user, sessionKey: key };
+        return { user, sessionKey: key, session };
     }
 
     // ----- handlers -----------------------------------------------------------
@@ -378,6 +390,100 @@ export class CloudGramApi {
         return this.#accountView(user);
     }
 
+    async quickLogin(req, res) {
+        this.loginByIp.take(req.ip);
+        const name = normalizeUsername(req.body.username);
+        this.loginByUser.take(name);
+        const proof = requireProof(req.body.proof);
+        const user = this.db.data.users[name];
+        const quick = user?.quick;
+        const verifier = quick?.verifier ?? {
+            salt: "AAAAAAAAAAAAAAAAAAAAAA==",
+            hash: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+        };
+        const ok = await checkVerifier(verifier, proof);
+        if (
+            !ok ||
+            !user?.verifier ||
+            !quick ||
+            this.db.data.users[name] !== user ||
+            user.quick !== quick
+        )
+            throw new HttpError(401, "bad_credentials");
+        this.loginByUser.clear(name);
+        await this.#startSession(
+            res,
+            name,
+            req.body.remember,
+            req.headers["user-agent"],
+            "quick",
+        );
+        return this.#accountView(user, quick.wrappedDek);
+    }
+
+    async #passwordSession(req, res) {
+        const auth = await this.authenticate(req, res);
+        if (auth.session.via === "quick")
+            throw new HttpError(403, "password_required");
+        return auth;
+    }
+
+    async #checkPassword(req, res) {
+        const { user, sessionKey } = await this.#passwordSession(req, res);
+        this.loginByUser.take(user.username);
+        const verifier = user.verifier;
+        if (req.body.loginKey == null)
+            throw new HttpError(401, "bad_credentials");
+        if (
+            !(await checkVerifier(
+                verifier,
+                requireLoginKey(req.body.loginKey),
+            )) ||
+            this.db.data.users[user.username] !== user ||
+            user.verifier !== verifier ||
+            !this.db.data.sessions[sessionKey]
+        )
+            throw new HttpError(401, "bad_credentials");
+        return user;
+    }
+
+    async enableQuick(req, res) {
+        const user = await this.#checkPassword(req, res);
+        const proof = requireProof(req.body.proof);
+        const wrappedDek = requireBlob(
+            req.body.wrappedDek,
+            1024,
+            "bad_wrapped_dek",
+        );
+        const passwordVerifier = user.verifier;
+        const verifier = await makeVerifier(proof);
+        if (
+            this.db.data.users[user.username] !== user ||
+            user.verifier !== passwordVerifier ||
+            !this.db.data.sessions[sha256(req.cookies[COOKIE])]
+        )
+            throw new HttpError(401, "bad_credentials");
+        this.#dropQuickSessions(user.username);
+        user.quick = { verifier, wrappedDek, createdAt: this.now() };
+        await this.db.save();
+        return { ok: true };
+    }
+
+    async disableQuick(req, res) {
+        const user = await this.#checkPassword(req, res);
+        delete user.quick;
+        this.#dropQuickSessions(user.username);
+        await this.db.save();
+        return { ok: true };
+    }
+
+    #dropQuickSessions(username) {
+        for (const [key, session] of Object.entries(this.db.data.sessions)) {
+            if (session.username === username && session.via === "quick")
+                delete this.db.data.sessions[key];
+        }
+    }
+
     setupInfo(req) {
         this.setupByIp.take(req.ip);
         const user = this.#userBySetupToken(req.body.token);
@@ -423,11 +529,11 @@ export class CloudGramApi {
         return user;
     }
 
-    #accountView(user) {
+    #accountView(user, wrappedDek = user.wrappedDek) {
         return {
             username: user.username,
             kdf: user.kdf,
-            wrappedDek: user.wrappedDek,
+            wrappedDek,
             hasTelegram: Boolean(user.session),
             hasRecovery: Boolean(user.recovery),
         };
@@ -490,6 +596,7 @@ export class CloudGramApi {
         );
         const recovery = await requireRecovery(req.body.recovery);
         Object.assign(user, { kdf, verifier, wrappedDek, recovery });
+        delete user.quick;
         this.loginByUser.clear(user.username);
         this.#dropSessions(user.username);
         await this.#startSession(
@@ -503,7 +610,7 @@ export class CloudGramApi {
 
     /** A new recovery code for a signed-in account; the password is asked again. */
     async setRecovery(req, res) {
-        const { user } = await this.authenticate(req, res);
+        const { user } = await this.#passwordSession(req, res);
         this.loginByUser.take(user.username);
         if (
             !(await checkVerifier(
@@ -519,8 +626,17 @@ export class CloudGramApi {
     }
 
     async me(req, res) {
-        const { user } = await this.authenticate(req, res);
-        return this.#accountView(user);
+        const { user, session } = await this.authenticate(req, res);
+        return {
+            ...this.#accountView(
+                user,
+                session.via === "quick"
+                    ? user.quick?.wrappedDek
+                    : user.wrappedDek,
+            ),
+            quick: Boolean(user.quick),
+            via: session.via ?? "password",
+        };
     }
 
     async logout(req, res) {
@@ -540,7 +656,7 @@ export class CloudGramApi {
     }
 
     async logoutOthers(req, res) {
-        const { user, sessionKey } = await this.authenticate(req, res);
+        const { user, sessionKey } = await this.#passwordSession(req, res);
         this.#dropSessions(user.username, sessionKey);
         await this.play.dropOwner(user.username);
         await this.db.save();
@@ -553,7 +669,7 @@ export class CloudGramApi {
      * a stolen cookie alone must not be enough to lock the owner out.
      */
     async changePassword(req, res) {
-        const { user, sessionKey } = await this.authenticate(req, res);
+        const { user, sessionKey } = await this.#passwordSession(req, res);
         this.loginByUser.take(user.username);
         if (
             !(await checkVerifier(
@@ -572,7 +688,9 @@ export class CloudGramApi {
             1024,
             "bad_wrapped_dek",
         );
+        // Remove the quick wrap so the old Saved Messages key file stops working; re-enable quick login afterwards.
         Object.assign(user, { kdf, verifier, wrappedDek });
+        delete user.quick;
         this.#dropSessions(user.username, sessionKey);
         await this.play.dropOwner(user.username);
         await this.db.save();
@@ -585,7 +703,7 @@ export class CloudGramApi {
     }
 
     async putSession(req, res) {
-        const { user } = await this.authenticate(req, res);
+        const { user } = await this.#passwordSession(req, res);
         this.#requireLease(user.username, req.body.browserId);
         user.session = {
             ...requireBlob(
@@ -600,7 +718,7 @@ export class CloudGramApi {
     }
 
     async deleteSession(req, res) {
-        const { user } = await this.authenticate(req, res);
+        const { user } = await this.#passwordSession(req, res);
         delete user.session;
         await this.db.save();
         return { ok: true };

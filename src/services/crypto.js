@@ -44,6 +44,47 @@ export function randomBase64(size) {
     return toBase64(globalThis.crypto.getRandomValues(new Uint8Array(size)));
 }
 
+export function newQuickKey() {
+    return toBase64(globalThis.crypto.getRandomValues(new Uint8Array(32)))
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, "");
+}
+
+export async function quickSecrets(q) {
+    if (!/^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/.test(q))
+        throw new Error("Invalid quick key");
+    const raw = fromBase64(q.replace(/-/g, "+").replace(/_/g, "/") + "=");
+    const base = await subtle.importKey("raw", raw, "HKDF", false, [
+        "deriveBits",
+    ]);
+    raw.fill(0);
+    const derive = (info) =>
+        subtle.deriveBits(
+            {
+                name: "HKDF",
+                hash: "SHA-256",
+                salt: new Uint8Array(0),
+                info: encoder.encode(info),
+            },
+            base,
+            256,
+        );
+    const proofBytes = new Uint8Array(await derive("cloudgram-quick-proof"));
+    const proof = toBase64(proofBytes)
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, "");
+    proofBytes.fill(0);
+    const wrapBytes = new Uint8Array(await derive("cloudgram-quick-wrap"));
+    const wrapKey = await subtle.importKey("raw", wrapBytes, "AES-GCM", false, [
+        "encrypt",
+        "decrypt",
+    ]);
+    wrapBytes.fill(0);
+    return { proof, wrapKey };
+}
+
 export function newKdf() {
     return { salt: randomBase64(16), iterations: ITERATIONS };
 }

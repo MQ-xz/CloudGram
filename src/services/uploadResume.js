@@ -15,6 +15,7 @@
  * log existed, or from another browser) can only come back the last way.
  */
 import { getClient } from "./telegram";
+import { isQuickDocument } from "./quickKey";
 import {
     createFile,
     createFolder,
@@ -163,7 +164,8 @@ async function sentFinder(entries, onLooked) {
         const messages = await client.getMessages("me", {
             ids: noted.slice(i, i + 100),
         });
-        for (const m of messages) if (m) byId.set(m.id, m);
+        for (const m of messages)
+            if (m && !isQuickDocument(m)) byId.set(m.id, m);
     }
 
     // Only the stretches of time something was being sent are read: an
@@ -184,7 +186,7 @@ async function sentFinder(entries, onLooked) {
         for await (const m of client.iterMessages("me", { offsetDate: to })) {
             if (m.date < from || read >= LOOK_BACK) break;
             read += 1;
-            recent.push(m);
+            if (!isQuickDocument(m)) recent.push(m);
             if (read % 100 === 0) onLooked(read);
         }
     }
