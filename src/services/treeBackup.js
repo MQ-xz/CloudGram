@@ -14,6 +14,7 @@
 import { Api } from "telegram";
 
 import { getClient, isOnline } from "./telegram";
+import { isQuickDocument } from "./quickKey";
 import {
     createFile,
     createFolder,
@@ -175,7 +176,11 @@ export async function importFromTelegram(onProgress) {
         if (scanned % 200 === 0) onProgress?.(scanned, added);
         if (!message.media || known.has(message.id)) continue;
         const name = nameOf(message);
-        if (name === "storyboard.jpg" || name?.startsWith(BACKUP_PREFIX))
+        if (
+            name === "storyboard.jpg" ||
+            name?.startsWith(BACKUP_PREFIX) ||
+            isQuickDocument(message)
+        )
             continue;
         const file = locate(message.media);
         if (!file) continue;

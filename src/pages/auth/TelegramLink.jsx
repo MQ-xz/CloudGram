@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
-import { Api } from "telegram";
 
 import {
     Alert,
@@ -13,7 +12,11 @@ import {
 import TelegramIcon from "@mui/icons-material/Telegram";
 
 import AuthShell from "./AuthShell";
-import { API_ID, API_HASH } from "../../config/config";
+import {
+    sendCode,
+    signIn,
+    signInWithPassword,
+} from "../../services/telegramAuth";
 import { describeError } from "../../services/api";
 import {
     adoptLegacySession,
@@ -61,25 +64,12 @@ export default function TelegramLink() {
         const client = clientRef.current;
         try {
             if (step === "phone") {
-                const res = await client.invoke(
-                    new Api.auth.SendCode({
-                        phoneNumber,
-                        apiId: API_ID,
-                        apiHash: API_HASH,
-                        settings: new Api.CodeSettings({}),
-                    }),
-                );
+                const res = await sendCode(client, phoneNumber);
                 setPhoneCodeHash(res.phoneCodeHash);
                 setStep("code");
             } else if (step === "code") {
                 try {
-                    await client.invoke(
-                        new Api.auth.SignIn({
-                            phoneNumber,
-                            phoneCodeHash,
-                            phoneCode,
-                        }),
-                    );
+                    await signIn(client, phoneNumber, phoneCodeHash, phoneCode);
                     await finish();
                     return;
                 } catch (e) {
@@ -87,18 +77,7 @@ export default function TelegramLink() {
                     setStep("password");
                 }
             } else {
-                let failure = null;
-                await client.signInWithPassword(
-                    { apiId: API_ID, apiHash: API_HASH },
-                    {
-                        password: async () => password,
-                        onError: (e) => {
-                            failure = e;
-                            return true;
-                        },
-                    },
-                );
-                if (failure) throw failure;
+                await signInWithPassword(client, password);
                 await finish();
                 return;
             }

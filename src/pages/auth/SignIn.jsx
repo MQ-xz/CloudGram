@@ -12,6 +12,7 @@ import {
 
 import AuthShell from "./AuthShell";
 import Recover from "./Recover";
+import QuickLogin from "./QuickLogin";
 import { describeError } from "../../services/api";
 import { login, unlock } from "../../services/account";
 
@@ -26,6 +27,7 @@ export default function SignIn({ locked, username: knownUser, onSwitchUser }) {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState(null);
     const [forgot, setForgot] = useState(false);
+    const [quick, setQuick] = useState(false);
 
     async function submit(event) {
         event.preventDefault();
@@ -39,6 +41,8 @@ export default function SignIn({ locked, username: knownUser, onSwitchUser }) {
             setBusy(false);
         }
     }
+
+    if (quick) return <QuickLogin onBack={() => setQuick(false)} />;
 
     if (forgot)
         return (
@@ -88,6 +92,11 @@ export default function SignIn({ locked, username: knownUser, onSwitchUser }) {
                         label="Ghi nhớ đăng nhập trên thiết bị này"
                     />
                     {error && <Alert severity="error">{error}</Alert>}
+                    {!locked && (
+                        <Button onClick={() => setQuick(true)} disabled={busy}>
+                            Đăng nhập nhanh bằng username CloudGram
+                        </Button>
+                    )}
                     <Button
                         size="small"
                         onClick={() => setForgot(true)}

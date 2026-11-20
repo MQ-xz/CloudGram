@@ -296,7 +296,7 @@ ConfirmDialog.propTypes = {
     onSecondary: PropTypes.func,
 };
 
-export function PasswordDialog({ open, onClose, onDone }) {
+export function PasswordDialog({ open, onClose, onDone, onPasswordRequired }) {
     const [current, setCurrent] = useState("");
     const [next, setNext] = useState("");
     const [confirm, setConfirm] = useState("");
@@ -323,7 +323,9 @@ export function PasswordDialog({ open, onClose, onDone }) {
             await changePassword(current, next);
             onDone();
         } catch (e) {
-            setError(describeError(e));
+            if (e.status === 403 && e.code === "password_required")
+                onPasswordRequired();
+            else setError(describeError(e));
         }
         setBusy(false);
     }
@@ -386,13 +388,20 @@ PasswordDialog.propTypes = {
     open: PropTypes.bool,
     onClose: PropTypes.func,
     onDone: PropTypes.func,
+    onPasswordRequired: PropTypes.func,
 };
 
 /**
  * A new recovery code, after the password. With `missing`, opened by itself
  * because the account has none yet.
  */
-export function RecoveryDialog({ open, missing, username, onClose }) {
+export function RecoveryDialog({
+    open,
+    missing,
+    username,
+    onClose,
+    onPasswordRequired,
+}) {
     const [password, setPassword] = useState("");
     const [code, setCode] = useState(null);
     const [saved, setSaved] = useState(false);
@@ -415,7 +424,9 @@ export function RecoveryDialog({ open, missing, username, onClose }) {
         try {
             setCode(await newRecoveryCode(password));
         } catch (e) {
-            setError(describeError(e));
+            if (e.status === 403 && e.code === "password_required")
+                onPasswordRequired();
+            else setError(describeError(e));
         }
         setBusy(false);
     }
@@ -485,6 +496,7 @@ RecoveryDialog.propTypes = {
     missing: PropTypes.bool,
     username: PropTypes.string,
     onClose: PropTypes.func,
+    onPasswordRequired: PropTypes.func,
 };
 
 /**

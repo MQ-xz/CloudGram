@@ -50,6 +50,10 @@ async function parse(res) {
 export const api = {
     prelogin: (username) => request("POST", "/auth/prelogin", { username }),
     login: (body) => request("POST", "/auth/login", body),
+    quickLogin: (body, signal) =>
+        request("POST", "/auth/quick-login", body, signal),
+    enableQuick: (body) => request("POST", "/quick/enable", body),
+    disableQuick: (body) => request("POST", "/quick/disable", body),
     setupInfo: (token) => request("POST", "/auth/setup-info", { token }),
     setup: (body) => request("POST", "/auth/setup", body),
     logout: (browserId) => request("POST", "/auth/logout", { browserId }),

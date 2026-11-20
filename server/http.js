@@ -14,6 +14,9 @@ import { FileReply, SHARE_LIMITS } from "./shares.js";
 const ROUTES = {
     "POST /api/auth/prelogin": "prelogin",
     "POST /api/auth/login": "login",
+    "POST /api/auth/quick-login": "quickLogin",
+    "POST /api/quick/enable": "enableQuick",
+    "POST /api/quick/disable": "disableQuick",
     "POST /api/auth/setup-info": "setupInfo",
     "POST /api/auth/setup": "completeSetup",
     "POST /api/auth/logout": "logout",

@@ -54,6 +54,7 @@ import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
 import FolderOpenOutlinedIcon from "@mui/icons-material/FolderOpenOutlined";
 
 import TopBar from "../../components/drive/TopBar";
+import QuickSettings from "../../components/drive/QuickSettings";
 import Sidebar, { NewMenu } from "../../components/drive/Sidebar";
 import { ItemGrid, ItemList } from "../../components/drive/ItemViews";
 import ItemMenu from "../../components/drive/ItemMenu";
@@ -234,6 +235,7 @@ export default function DriveApp({ mode, onToggleMode }) {
     const [details, setDetails] = useState(false);
     const [preview, setPreview] = useState(null);
     const [dialog, setDialog] = useState(null);
+    const via = useSelector((state) => state.auth.via);
     const [busy, setBusy] = useState(false);
     const [thumbnailJobs, setThumbnailJobs] = useState(new Map());
     const [notice, setNotice] = useState(null);
@@ -362,8 +364,12 @@ export default function DriveApp({ mode, onToggleMode }) {
     // an account without a recovery code is one forgotten password from losing
     // its tree: ask for one as soon as the drive opens
     useEffect(() => {
-        if (!hasRecovery()) setDialog({ type: "recovery", missing: true });
-    }, []);
+        if (!hasRecovery())
+            setDialog({
+                type: via === "quick" ? "passwordRequired" : "recovery",
+                missing: true,
+            });
+    }, [via]);
 
     // the tree's plain copy in Telegram, every 30 minutes (services/treeBackup)
     useEffect(() => {
@@ -1013,6 +1019,17 @@ export default function DriveApp({ mode, onToggleMode }) {
     // ----- account menu ---------------------------------------------------------------------------
 
     function onAccountAction(action) {
+        if (
+            via === "quick" &&
+            ["quick", "unlink", "password", "recovery"].includes(action)
+        ) {
+            setDialog({ type: "passwordRequired" });
+            return;
+        }
+        if (action === "quick") {
+            setDialog({ type: "quick" });
+            return;
+        }
         if (action === "logout") logout();
         else if (action === "password") setDialog({ type: "password" });
         else if (action === "logoutOthers") {
@@ -1777,11 +1794,37 @@ export default function DriveApp({ mode, onToggleMode }) {
                 busy={busy}
                 onConfirm={() =>
                     run("Không huỷ liên kết được", async () => {
-                        await unlinkTelegram();
+                        try {
+                            await unlinkTelegram();
+                        } catch (e) {
+                            if (
+                                e.status === 403 &&
+                                e.code === "password_required"
+                            ) {
+                                setDialog({ type: "passwordRequired" });
+                                return;
+                            }
+                            throw e;
+                        }
                         setDialog(null);
                     })
                 }
                 onClose={() => setDialog(null)}
+            />
+            <ConfirmDialog
+                open={dialog?.type === "passwordRequired"}
+                title="Cần đăng nhập bằng mật khẩu"
+                body="Cần đăng nhập bằng mật khẩu để dùng chức năng này"
+                confirmLabel="Đăng xuất và đăng nhập bằng mật khẩu"
+                onConfirm={logout}
+                onClose={() => setDialog(null)}
+            />
+            <QuickSettings
+                open={dialog?.type === "quick"}
+                onClose={() => setDialog(null)}
+                onPasswordRequired={() =>
+                    setDialog({ type: "passwordRequired" })
+                }
             />
             <BackupDialog
                 open={dialog?.type === "backup"}
@@ -1789,12 +1832,18 @@ export default function DriveApp({ mode, onToggleMode }) {
             />
             <RecoveryDialog
                 open={dialog?.type === "recovery"}
+                onPasswordRequired={() =>
+                    setDialog({ type: "passwordRequired" })
+                }
                 missing={Boolean(dialog?.missing)}
                 username={accountName()}
                 onClose={() => setDialog(null)}
             />
             <PasswordDialog
                 open={dialog?.type === "password"}
+                onPasswordRequired={() =>
+                    setDialog({ type: "passwordRequired" })
+                }
                 onClose={() => setDialog(null)}
                 onDone={() => {
                     setDialog(null);
