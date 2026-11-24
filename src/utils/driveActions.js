@@ -478,7 +478,8 @@ export async function deleteForever(ids, { withLinks = false } = {}) {
             messagesOf(r).forEach((x) => messageIds.delete(x));
 
     cancelUploads([...recordIds]);
-    // a file deleted for good must not stay downloadable through its link
+    // a file deleted for good must not stay downloadable through its link;
+    // a dead link left in the tree is harmless, a live one is not
     await dropShares(records.filter((r) => recordIds.has(r.id)));
     // the storyboard goes with the last record of its video
     storyboardsOf(
@@ -505,12 +506,15 @@ export async function deleteForever(ids, { withLinks = false } = {}) {
             )
         )
             messageIds.add(r.thumbnail);
+    // The vault forgets them first: should that save fail, the messages stay
+    // as orphans in Saved Messages rather than the tree pointing at nothing
+    const client = getClient();
+    await removeRecords([...recordIds]);
     if (messageIds.size) {
-        await getClient().deleteMessages("me", [...messageIds], {
+        await client.deleteMessages("me", [...messageIds], {
             revoke: true,
         });
     }
-    await removeRecords([...recordIds]);
 }
 
 export function emptyTrash(options) {

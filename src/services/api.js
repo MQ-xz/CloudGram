@@ -198,10 +198,22 @@ const MESSAGES = {
         "Dropbox không cho tải link này: link sai, có mật khẩu, đã tắt tải xuống, hoặc thư mục quá lớn để tải một lần (trên 20 GB hoặc 10.000 tệp).",
     dropbox_busy: "Dropbox đang giới hạn lượt tải. Đợi một lúc rồi thử lại.",
     dropbox_unreachable: "Máy chủ không kết nối được Dropbox.",
+    too_large:
+        "Danh sách tệp quá lớn nên máy chủ chưa lưu được. Thay đổi vẫn nằm trong tab này; đừng đóng tab.",
+    bad_tree: "Máy chủ từ chối danh sách tệp (dữ liệu không hợp lệ).",
+    version_conflict:
+        "Danh sách tệp vừa được thay đổi ở nơi khác. Đang đồng bộ lại.",
+    bad_response: "Máy chủ trả lời không đúng dạng. Thử lại sau.",
+    bad_json: "Máy chủ không đọc được dữ liệu gửi lên.",
+    lease_held: "Telegram đang được dùng ở trình duyệt khác.",
 };
 
+/** Words for an error a user is shown; never a bare code. */
 export function describeError(error) {
     if (error instanceof ApiError)
         return MESSAGES[error.code] ?? `Lỗi máy chủ (${error.code}).`;
+    if (error?.code === "timeout") return "Quá thời gian chờ. Thử lại sau.";
+    if (Number(error?.seconds) > 0)
+        return `Telegram yêu cầu đợi ${error.seconds} giây rồi thử lại.`;
     return error?.errorMessage ?? error?.message ?? String(error);
 }

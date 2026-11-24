@@ -134,6 +134,8 @@ async function harness({
                     );
                 }
             },
+            ApiError: class ApiError extends Error {},
+            describeError: (error) => error?.message ?? String(error),
             getClient: () => client,
             isOnline: online,
             onClientChange(fn) {

@@ -309,7 +309,7 @@ test("orphan and resume scanners ignore quick documents", async () => {
             a.fileName?.startsWith("cloudgram-quick-key-"),
         );
     const client = {
-        getMessages: async () => [quick],
+        getMessages: async (_, options) => (options?.offsetId ? [] : [quick]),
         async *iterMessages() {
             yield quick;
         },

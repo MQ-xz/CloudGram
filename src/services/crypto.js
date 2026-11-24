@@ -180,12 +180,45 @@ async function decryptBytes(key, blob, label) {
     return new Uint8Array(plain);
 }
 
-export async function encryptJson(dek, value, label) {
-    return encryptBytes(dek, encoder.encode(JSON.stringify(value)), label);
+async function through(stream, bytes) {
+    const piped = new Blob([bytes]).stream().pipeThrough(stream);
+    return new Uint8Array(await new Response(piped).arrayBuffer());
+}
+
+// gzip's magic bytes; JSON text cannot start with 0x1f, so a plaintext that
+// does was compressed, and being inside the ciphertext the mark is
+// authenticated like the rest
+const isGzip = (bytes) => bytes[0] === 0x1f && bytes[1] === 0x8b;
+
+/**
+ * `compress` gzips the JSON before it is encrypted (the file tree: tens of
+ * MB of JSON shrinks several times over). Readers take either form.
+ */
+export async function encryptJson(
+    dek,
+    value,
+    label,
+    { compress = false } = {},
+) {
+    let bytes = encoder.encode(JSON.stringify(value));
+    if (compress) {
+        const packed = await through(
+            new globalThis.CompressionStream("gzip"),
+            bytes,
+        );
+        if (packed.length < bytes.length) bytes = packed;
+    }
+    return encryptBytes(dek, bytes, label);
 }
 
 export async function decryptJson(dek, blob, label) {
-    return JSON.parse(decoder.decode(await decryptBytes(dek, blob, label)));
+    let bytes = await decryptBytes(dek, blob, label);
+    if (isGzip(bytes))
+        bytes = await through(
+            new globalThis.DecompressionStream("gzip"),
+            bytes,
+        );
+    return JSON.parse(decoder.decode(bytes));
 }
 
 // ----- recovery code ------------------------------------------------------------

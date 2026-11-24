@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { getClient, isOnline, onClientChange } from "./telegram";
 import { getRecord, getSnapshot, update, flush } from "./drive";
+import { ApiError, describeError } from "./api";
 import { uploadScope } from "./uploadLog";
 import { fetchFile } from "../utils/downloadFile";
 import { uploadParts } from "../utils/transfer";
@@ -427,7 +428,15 @@ function make(fileId, src, options = {}) {
                                 { storyboard: r.storyboard },
                                 { preserveModifiedAt: true },
                             );
-                    // A save may already have reached the server: retain both messages.
+                    // A save may already have reached the server: retain both
+                    // messages, unless the server said for sure it took none
+                    if (
+                        error instanceof ApiError &&
+                        error.status >= 400 &&
+                        error.status < 500 &&
+                        error.status !== 409
+                    )
+                        await discard();
                 }
                 throw error;
             }
@@ -471,6 +480,8 @@ export function canPrefetch(record) {
     const s = sessionState();
     return Boolean(
         record?.file_id &&
+            // while the vault cannot be saved a new one could not be kept
+            !getSnapshot().error &&
             !s.failed.has(record.file_id) &&
             (!record.storyboard || s.bad.has(record.storyboard.message)),
     );
@@ -586,6 +597,13 @@ async function getStoryboard(record, streamSrc, allowMake, options = {}) {
     }
 }
 
+/** What follows "Hình xem trước" in the player when there is none. */
+function describeProblem(error) {
+    if (error instanceof ApiError)
+        return `đã tạo nhưng chưa lưu được: ${describeError(error)}`;
+    return `bị lỗi: ${describeError(error)}`;
+}
+
 /**
  * Returns [board, making, problem, rebuild, result, progress]: the storyboard once it is
  * at hand or null, whether one is being drawn, a problem message or null,
@@ -663,7 +681,7 @@ export function useStoryboard(record, streamSrc, allowMake) {
                     (!cancelled || generated) &&
                     !controller.signal.aborted
                 )
-                    setProblem(error.message);
+                    setProblem(describeProblem(error));
             })
             .finally(() => {
                 if (
@@ -716,7 +734,7 @@ export function useStoryboard(record, streamSrc, allowMake) {
             }
         } catch (error) {
             if (error.name !== "AbortError" && !controller.signal.aborted)
-                setProblem(`Không tạo lại được: ${error.message}`);
+                setProblem(`không tạo lại được: ${describeProblem(error)}`);
         } finally {
             if (!controller.signal.aborted) {
                 rebuilding.current = false;

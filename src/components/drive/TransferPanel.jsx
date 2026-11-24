@@ -253,12 +253,22 @@ export default function TransferPanel() {
                                     />
                                 </Tooltip>
                             )}
-                            {entry.type === "DONE" && !entry.unsent && (
-                                <CheckCircleIcon
-                                    sx={{ color: "#1e8e3e" }}
-                                    fontSize="small"
-                                />
+                            {entry.type === "DONE" && entry.unsaved && (
+                                <Tooltip title="Đã lên Telegram nhưng chưa lưu được vào danh sách tệp trên máy chủ. Đừng đóng tab; app đang thử lưu lại.">
+                                    <WarningAmberIcon
+                                        color="error"
+                                        fontSize="small"
+                                    />
+                                </Tooltip>
                             )}
+                            {entry.type === "DONE" &&
+                                !entry.unsent &&
+                                !entry.unsaved && (
+                                    <CheckCircleIcon
+                                        sx={{ color: "#1e8e3e" }}
+                                        fontSize="small"
+                                    />
+                                )}
                             {entry.type === "QUEUED" && (
                                 <Tooltip title={entry.message ?? "Đang chờ"}>
                                     <ScheduleIcon

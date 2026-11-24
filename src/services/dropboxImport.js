@@ -15,7 +15,7 @@ import { useSyncExternalStore } from "react";
 import { v4 as uuid4 } from "uuid";
 
 import { api, describeError } from "./api";
-import { createFolder, getSnapshot } from "./drive";
+import { createFolder, flush, getSnapshot } from "./drive";
 import { dropEntry, entryOf, logEntry, uploadScope } from "./uploadLog";
 import { UPLOAD_OWNER } from "../config/security";
 import { onClientChange } from "./telegram";
@@ -163,6 +163,8 @@ async function pump() {
             patch(job, { status: "working" });
             try {
                 await run(job);
+                // "done" only once the vault holds what was brought in
+                await flush();
                 patch(job, { status: "done" });
                 if (owns(job)) dropEntry(job.logId);
             } catch (error) {

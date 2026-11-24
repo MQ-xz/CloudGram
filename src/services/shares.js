@@ -74,8 +74,13 @@ export async function createShare(record, days, onProgress = () => {}) {
         // the old link, if any, is replaced; its copy is not needed any more
         const previous = getRecord(record.id)?.share;
         update(record.id, { share }, { immediate: true });
-        await flush().catch(() => {});
-        if (previous) await removeOnServer(previous.id);
+        // the old link goes only once the vault holds the new one, or a
+        // reload could bring back a pointer to a deleted share
+        const saved = await flush().then(
+            () => true,
+            () => false,
+        );
+        if (previous && saved) await removeOnServer(previous.id);
         return share;
     } catch (error) {
         await removeOnServer(id);

@@ -21,6 +21,7 @@ import {
     createFolder,
     getRecord,
     getSnapshot,
+    isSaved,
     removeRecords,
     wasDeleted,
 } from "./drive";
@@ -76,11 +77,14 @@ export async function scan() {
             continue;
         }
         const record = getRecord(entry.id);
-        // deleted since, or finished after all: nothing left to do
-        if (wasDeleted(entry.id) || record?.file_id != null) {
+        // deleted since, or finished and saved after all: nothing left to do
+        if (wasDeleted(entry.id) || isSaved(entry.id)) {
             dropEntry(entry.id);
             continue;
         }
+        // finished in this tab's memory but the vault has not taken it yet:
+        // the entry is the only way back to it, so it stays until it does
+        if (record?.file_id != null) continue;
         if (isQueued(entry.id)) continue;
         files.push({
             id: entry.id,
@@ -147,6 +151,90 @@ function ensureRecord({ id, entry }) {
 
 // Saved Messages read back at most this far when looking for sent files
 const LOOK_BACK = 10000;
+// one Telegram request may take this long before it counts as stuck
+const CALL_TIMEOUT = 60000;
+// how long to wait for the Telegram connection after the browser reopened
+const CONNECT_TIMEOUT = 30000;
+// a longer flood wait is not sat through: "Tiếp tục" can be clicked later
+const MAX_FLOOD_WAIT = 300;
+const ATTEMPTS = 4;
+
+const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** A failure the banner can put in words and offer "Tiếp tục" again for. */
+export class ResumeScanError extends Error {
+    constructor(message, cause) {
+        super(message);
+        this.name = "ResumeScanError";
+        this.cause = cause;
+    }
+}
+
+function timed(promise, ms) {
+    let timer;
+    return Promise.race([
+        promise,
+        new Promise((_, reject) => {
+            timer = setTimeout(() => {
+                const error = new Error("Telegram did not answer in time");
+                error.code = "timeout";
+                reject(error);
+            }, ms);
+        }),
+    ]).finally(() => clearTimeout(timer));
+}
+
+async function connectedClient() {
+    const until = Date.now() + CONNECT_TIMEOUT;
+    for (;;) {
+        try {
+            const client = getClient();
+            if (client.connected !== false) return client;
+        } catch {
+            // not set up yet after the reload
+        }
+        if (Date.now() >= until)
+            throw new ResumeScanError(
+                "Chưa kết nối được Telegram nên chưa tìm được các tệp đã gửi. Kiểm tra mạng rồi bấm Tiếp tục lại.",
+            );
+        await pause(500);
+    }
+}
+
+/**
+ * One Telegram request with a deadline; a flood wait is sat through (and
+ * said through `onWait`), anything else is tried again a few times.
+ */
+async function ask(request, onWait) {
+    for (let attempt = 1; ; attempt += 1) {
+        try {
+            return await timed(request(), CALL_TIMEOUT);
+        } catch (error) {
+            const seconds = Number(error?.seconds);
+            if (seconds > 0) {
+                if (seconds > MAX_FLOOD_WAIT || attempt >= ATTEMPTS)
+                    throw new ResumeScanError(
+                        `Telegram yêu cầu đợi ${seconds} giây. Đợi rồi bấm Tiếp tục lại.`,
+                        error,
+                    );
+                onWait(seconds);
+                await pause(seconds * 1000 + 500);
+                onWait(null);
+                continue;
+            }
+            if (attempt >= ATTEMPTS)
+                throw new ResumeScanError(
+                    error?.code === "timeout"
+                        ? "Telegram không trả lời khi tìm các tệp đã gửi. Bấm Tiếp tục để thử lại."
+                        : `Không đọc được Saved Messages (${
+                              error?.errorMessage ?? error?.message ?? error
+                          }). Bấm Tiếp tục để thử lại.`,
+                    error,
+                );
+            await pause(1000 * 2 ** attempt);
+        }
+    }
+}
 
 /**
  * Finds the messages earlier tabs sent for `entries`, if they got that far:
@@ -154,18 +242,34 @@ const LOOK_BACK = 10000;
  * time it started sending. Everything is fetched once up front: one request
  * per entry, hundreds of them after a large folder, ran into Telegram's flood
  * waits and held the banner at 0 for many minutes.
+ *
+ * `onLooked({ checked, total, looked, wait })` hears every batch. Rejects
+ * with a ResumeScanError when Telegram cannot be read; the finder it returns
+ * carries `cutShort` when LOOK_BACK stopped the reading early.
  */
 async function sentFinder(entries, onLooked) {
-    const client = getClient();
-    onLooked(0);
-    const byId = new Map();
     const noted = entries.filter((e) => e.messageId).map((e) => e.messageId);
+    const progress = { checked: 0, total: noted.length, looked: 0, wait: null };
+    const say = () => onLooked({ ...progress });
+    const onWait = (seconds) => {
+        progress.wait = seconds;
+        say();
+    };
+    say();
+    const client = await connectedClient();
+    const byId = new Map();
     for (let i = 0; i < noted.length; i += 100) {
-        const messages = await client.getMessages("me", {
-            ids: noted.slice(i, i + 100),
-        });
+        const messages = await ask(
+            () =>
+                client.getMessages("me", {
+                    ids: noted.slice(i, i + 100),
+                }),
+            onWait,
+        );
         for (const m of messages)
             if (m && !isQuickDocument(m)) byId.set(m.id, m);
+        progress.checked = Math.min(noted.length, i + 100);
+        say();
     }
 
     // Only the stretches of time something was being sent are read: an
@@ -181,18 +285,44 @@ async function sentFinder(entries, onLooked) {
         else spans.push({ to: Math.ceil(start) + 600, from: start - 5 });
     }
     const recent = [];
-    let read = 0;
+    let cutShort = false;
     for (const { to, from } of spans) {
-        for await (const m of client.iterMessages("me", { offsetDate: to })) {
-            if (m.date < from || read >= LOOK_BACK) break;
-            read += 1;
-            if (!isQuickDocument(m)) recent.push(m);
-            if (read % 100 === 0) onLooked(read);
+        let offsetId = 0;
+        let offsetDate = to;
+        let more = true;
+        while (more) {
+            if (progress.looked >= LOOK_BACK) {
+                cutShort = true;
+                break;
+            }
+            const page = await ask(
+                () =>
+                    client.getMessages("me", {
+                        limit: 100,
+                        offsetId,
+                        offsetDate: offsetId ? undefined : offsetDate,
+                    }),
+                onWait,
+            );
+            more = page.length > 0;
+            for (const m of page) {
+                if (!m) continue;
+                if (m.date < from) {
+                    more = false;
+                    break;
+                }
+                progress.looked += 1;
+                if (!isQuickDocument(m)) recent.push(m);
+                offsetId = m.id;
+                offsetDate = m.date;
+            }
+            say();
         }
+        if (cutShort) break;
     }
 
     const used = new Set(getSnapshot().records.flatMap(messagesOf));
-    return (entry) => {
+    const find = (entry) => {
         const own = byId.get(entry.messageId);
         if (own) {
             used.add(own.id);
@@ -216,6 +346,8 @@ async function sentFinder(entries, onLooked) {
         if (found) used.add(found.id);
         return found ?? null;
     };
+    find.cutShort = cutShort;
+    return find;
 }
 
 // files opened from their handles at once; each is a few small disk reads
@@ -305,17 +437,13 @@ export async function resume(found, granted, onProgress) {
         .map((item) => item.entry)
         .filter((entry) => entry?.messageId || entry?.sending);
     if (sent.length) {
-        try {
-            sentMessage = await sentFinder(sent, (looked) =>
-                onProgress?.({ done: 0, total, looked }),
-            );
-        } catch (error) {
-            // cannot tell whether they were sent; let the user decide below
-            console.log(error);
-            sentMessage = () => {
-                throw error;
-            };
-        }
+        // Not knowing what was sent must not turn into sending it again or
+        // into asking for thousands of files: stop, and let "Tiếp tục" try
+        // again. The entries stay this tab's, which a rescan picks up.
+        sentMessage = await sentFinder(sent, (scan) =>
+            onProgress?.({ done: 0, total, scan }),
+        );
+        result.cutShort = Boolean(sentMessage.cutShort);
     }
 
     if (!current()) return result;

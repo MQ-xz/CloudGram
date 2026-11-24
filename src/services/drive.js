@@ -50,6 +50,8 @@ let dirty = false;
 let pushing = null;
 let pushTimer = null;
 let syncError = null;
+// file_id of each record as the server last acknowledged it
+let savedFileIds = new Map();
 const listeners = new Set();
 const collator = new Intl.Collator("vi", { numeric: true });
 
@@ -104,6 +106,22 @@ export function getRecord(id) {
     return record && !record.deleted ? record : undefined;
 }
 
+/**
+ * Whether the server holds this record's current file_id, not only this
+ * tab's memory. The upload log keeps an entry until it does, so closing the
+ * tab while saves fail cannot lose the link to bytes already on Telegram.
+ */
+export function isSaved(id) {
+    const record = records.get(id);
+    return record?.file_id != null && savedFileIds.get(id) === record.file_id;
+}
+
+function noteSaved(list, all = true) {
+    if (all) savedFileIds = new Map();
+    for (const record of list)
+        if (record.file_id != null) savedFileIds.set(record.id, record.file_id);
+}
+
 /** Deleted on purpose (a tombstone), as opposed to never having arrived. */
 export function wasDeleted(id) {
     return Boolean(records.get(id)?.deleted);
@@ -138,6 +156,7 @@ export async function openDrive(key) {
     const remote = await pull();
     version = remote.version;
     merge(remote.records);
+    noteSaved(remote.records);
     publish();
 }
 
@@ -146,6 +165,7 @@ export function closeDrive() {
     dek = null;
     version = 0;
     records = new Map();
+    savedFileIds = new Map();
     dirty = false;
     syncError = null;
     publish();
@@ -157,6 +177,7 @@ export async function refresh() {
     const remote = await pull();
     if (remote.version !== version) {
         version = remote.version;
+        noteSaved(remote.records, false);
         if (merge(remote.records)) publish();
     }
 }
@@ -220,25 +241,36 @@ async function push() {
             (r) => !(r.deleted && r.updatedAt < cutoff),
         );
         try {
-            const blob = await encryptJson(dek, { records: list }, LABEL);
+            const blob = await encryptJson(dek, { records: list }, LABEL, {
+                compress: true,
+            });
             const res = await api.putTree(blob, version);
             version = res.version;
             syncError = null;
+            noteSaved(list);
             return;
         } catch (error) {
             dirty = true;
             if (error instanceof ApiError && error.status === 409) {
                 const remote = await pull();
                 version = remote.version;
+                noteSaved(remote.records, false);
                 merge(remote.records);
                 publish();
                 continue;
             }
             syncError = error;
             publish();
-            // try again later; the change is still in memory and still dirty
+            // try again later; the change is still in memory and still dirty.
+            // Too large will not pass by itself: the same tree is not sent
+            // every 5 s, only once a minute in case the limit was raised
             clearTimeout(pushTimer);
-            pushTimer = setTimeout(() => flush().catch(() => {}), 5000);
+            pushTimer = setTimeout(
+                () => flush().catch(() => {}),
+                error instanceof ApiError && error.status === 413
+                    ? 60000
+                    : 5000,
+            );
             throw error;
         }
     }

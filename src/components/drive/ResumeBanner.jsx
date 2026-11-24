@@ -108,6 +108,11 @@ export default function ResumeBanner({ onNotice }) {
                 result.links && `chạy lại ${result.links} link Dropbox`,
             ].filter(Boolean);
             if (parts.length) report(`Đã tiếp tục: ${parts.join(", ")}.`);
+            if (result.cutShort)
+                report(
+                    "Saved Messages quá dài để đọc hết một lần; một số tệp có thể phải chọn lại.",
+                    "warning",
+                );
             // the browser said no to reading the folder for now: the next
             // click on "Tiếp tục" asks it again, no picking needed
             setFound(
@@ -304,10 +309,18 @@ export default function ResumeBanner({ onNotice }) {
         found.files.every((item) => !item.entry?.handle);
     const text = opening?.asking
         ? "Đang chờ trình duyệt cho phép đọc lại thư mục… Nếu trình duyệt hỏi, chọn Cho phép."
-        : opening?.looked != null
-        ? `Đang tìm trong Telegram các tệp đã gửi xong… đã xem ${count(
-              opening.looked,
-          )} tin nhắn`
+        : opening?.scan?.wait
+        ? `Telegram yêu cầu đợi ${count(
+              opening.scan.wait,
+          )} giây trước khi tìm tiếp các tệp đã gửi xong…`
+        : opening?.scan != null
+        ? `Đang tìm trong Telegram các tệp đã gửi xong… ${
+              opening.scan.total
+                  ? `đã kiểm tra ${count(opening.scan.checked)} / ${count(
+                        opening.scan.total,
+                    )} tệp, `
+                  : ""
+          }đã xem ${count(opening.scan.looked)} tin nhắn`
         : opening != null
         ? `Đang mở lại các tệp trên máy… ${count(opening.done)} / ${count(
               opening.total,

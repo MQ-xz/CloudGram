@@ -31,6 +31,7 @@ import DevicesOtherIcon from "@mui/icons-material/DevicesOther";
 import LinkOffIcon from "@mui/icons-material/LinkOff";
 import TelegramIcon from "@mui/icons-material/Telegram";
 
+import { describeError } from "../../services/api";
 import { useDrive } from "../../services/drive";
 
 // where the user was before searching, which clearing the box goes back to;
@@ -41,7 +42,11 @@ function SyncState() {
     const { syncing, dirty, error } = useDrive();
     if (error) {
         return (
-            <Tooltip title="Chưa lưu được thay đổi lên máy chủ, đang thử lại. Đừng đóng tab.">
+            <Tooltip
+                title={`Chưa lưu được thay đổi lên máy chủ: ${describeError(
+                    error,
+                )} Đang thử lại. Đừng đóng tab.`}
+            >
                 <CloudOffOutlinedIcon color="error" />
             </Tooltip>
         );

@@ -94,6 +94,7 @@ export default function Rescue() {
                     dek,
                     { records: [...byId.values()] },
                     LABEL,
+                    { compress: true },
                 );
                 try {
                     await api.putTree(merged, blob.version ?? 0);

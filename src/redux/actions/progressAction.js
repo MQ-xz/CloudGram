@@ -47,10 +47,12 @@ export function errorProgress(id, message) {
 // the last byte leaving and the record getting its file_id. Whoever started the
 // transfer now says when it is done.
 // `kept` says why the original asked to be deleted is still on disk
-export function completedProgress(id, kept = null) {
+// `unsaved`: on Telegram, but the vault has not taken its id yet
+export function completedProgress(id, kept = null, unsaved = false) {
     return {
         id: id,
         kept: kept,
+        unsaved: unsaved,
         type: "COMPLETED",
     };
 }

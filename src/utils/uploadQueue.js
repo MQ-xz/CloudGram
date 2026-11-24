@@ -525,7 +525,7 @@ async function settle(id, result, replaces, job) {
 
     jobs.delete(id);
     if (stored) dropEntry(id);
-    Store.dispatch(completedProgress(id, kept));
+    Store.dispatch(completedProgress(id, kept, Boolean(record) && !stored));
     if (record && stored && job?.group) notePiece(job.group, id);
 }
 

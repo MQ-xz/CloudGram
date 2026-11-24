@@ -36,9 +36,9 @@ import { Shares } from "./shares.js";
 const scryptAsync = promisify(scrypt);
 
 export const LIMITS = {
-    treeBytes: 25 * 1024 * 1024,
+    treeBytes: 60 * 1024 * 1024,
     sessionBytes: 16 * 1024,
-    body: 26 * 1024 * 1024,
+    body: 64 * 1024 * 1024,
 };
 
 const DAY = 24 * 60 * 60 * 1000;
